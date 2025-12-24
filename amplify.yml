@@ -1,6 +1,6 @@
 version: 1
 applications:
-  - appRoot: .
+  - appRoot: apps/web
     frontend:
       phases:
         preBuild:
@@ -9,12 +9,11 @@ applications:
             - pnpm install
         build:
           commands:
-            - pnpm --filter @ai-agent/web build
+            - pnpm build
       artifacts:
-        baseDirectory: apps/web/.next
+        baseDirectory: .next
         files:
           - "**/*"
       cache:
         paths:
           - node_modules/**/*
-
