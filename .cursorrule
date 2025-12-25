@@ -70,6 +70,13 @@
   - 依存管理は Node側: pnpm/Turborepo、Python側: Poetry/uv + Docker化を標準とし、バージョンピンとロックファイルを保持する。
   - セパレートリポに切り替える場合は、仕様・スキーマ・SDKのドリフト防止策（バージョン整合性と自動チェック）を検討する。
 
+# ブランチ運用とコミット
+- 基本フローは `feature/*` → `develop` → `staging` → `prod`。`feature` から `staging/prod` への直接マージは禁止。
+- ブランチ作成元/命名: 機能は `develop` から `feature/[issue]-[name]`。緊急対応は `prod` から `hotfix/[issue]-[desc]` を切り、`prod` と `develop` 両方へマージしブランチ削除。
+- `prod`/`staging`/`develop` は直接 push せず PR 経由でマージする。
+- テスト期待値: `feature` は Lint/単体/統合を必須、E2E は `staging/prod` で実行（CI 設定と整合させる）。
+- コミットメッセージは Conventional Commits (`feat|fix|docs|refactor|test|chore` 等) に従う。
+
 - 仕様・ドキュメント
   - 機能単位で仕様書を作成し、目的・前提・入出力・エッジケース・権限/RBAC・監査要件を簡潔に記載する。
   - 同時にパラメーターシートを作成し、API/環境変数/コネクタ設定/エージェント別スコープなどを一覧化する。更新時は仕様書とパラメーターシートを同期させる。

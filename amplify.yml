@@ -10,15 +10,13 @@ applications:
         build:
           commands:
             - pnpm build
-            - cp .next/required-server-files.json ./required-server-files.json
+            - mkdir -p .next/standalone/.next
+            - cp -R .next/static .next/standalone/.next/static
+            - if [ -d public ]; then cp -R public .next/standalone/public; fi
       artifacts:
-        baseDirectory: .
+        baseDirectory: .next/standalone
         files:
-          - .next/**/*
-          - node_modules/**/*
-          - package.json
-          - next.config.js
-          - public/**/*
+          - "**/*"
       cache:
         paths:
           - node_modules/**/*
