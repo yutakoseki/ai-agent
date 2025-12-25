@@ -1,6 +1,6 @@
-# CI/CD クイックスタートガイド
+# CI/CD クイックスタートガイド（一人開発版）
 
-このドキュメントでは、CI/CDセットアップの全体の流れを説明します。
+このドキュメントでは、一人開発向けのCI/CDセットアップの全体の流れを説明します。
 
 ## 概要
 
@@ -9,24 +9,29 @@
 ```
 1. GitHub Secrets 設定（5分）
    ↓
-2. ブランチ作成と保護ルール（10分）
+2. ブランチ作成（5分）
    ↓
-3. CODEOWNERS 更新（5分）
+3. テストPR作成とGitHub Actions実行（5分）
    ↓
-4. テストPR作成（5分）
+4. ブランチ保護ルール設定（10分）
    ↓
-5. Amplify セットアップ（30分）
+5. CODEOWNERS 更新（5分）
    ↓
-6. 動作確認（10分）
+6. Amplify セットアップ（30分）
+   ↓
+7. 動作確認（10分）
 ```
 
 **所要時間**: 約1時間
+
+> **注意**: これは一人開発用の設定です。チーム開発の場合は `ci-cd-quickstart-team.md` を参照してください。
 
 ---
 
 ## ステップ1: GitHub Secrets 設定（5分）
 
 ### 必要なもの
+
 - GitHubリポジトリへのアクセス権
 
 ### 手順
@@ -45,13 +50,11 @@ Name: TEST_DATABASE_URL
 Value: postgres://test:test@localhost:5432/test_db
 ```
 
-**詳細**: `docs/github-secrets-checklist.md`
+**詳細**: `docs/02-github-secrets-checklist.md`
 
 ---
 
-## ステップ2: ブランチ作成と保護ルール（10分）
-
-### 2.1 ブランチ作成
+## ステップ2: ブランチ作成（5分）
 
 ```bash
 # 現在の変更をコミット
@@ -66,95 +69,49 @@ git push origin develop
 git checkout -b staging
 git push origin staging
 
-# mainに戻る
-git checkout prod
+# prodブランチ作成
+git checkout -b prod
 git push origin prod
 ```
 
-### 2.2 ブランチ保護ルール設定
-
-GitHub → **Settings** → **Branches** → **Add branch protection rule**
-
-#### `prod` ブランチ
-```
-Branch name pattern: prod
-
-☑ Require a pull request before merging
-  ☑ Require approvals: 2
-☑ Require status checks to pass before merging
-☑ Require conversation resolution before merging
-☑ Require linear history
-```
-
-#### `staging` ブランチ
-```
-Branch name pattern: staging
-
-☑ Require a pull request before merging
-  ☑ Require approvals: 1
-☑ Require status checks to pass before merging
-☑ Require conversation resolution before merging
-```
-
-#### `develop` ブランチ
-```
-Branch name pattern: develop
-
-☑ Require a pull request before merging
-  ☑ Require approvals: 1
-☑ Require status checks to pass before merging
-```
-
-**詳細**: `docs/branch-setup-guide.md`
+**詳細**: `docs/03-branch-setup-guide.md`
 
 ---
 
-## ステップ3: CODEOWNERS 更新（5分）
+## ステップ3: テストPR作成とGitHub Actions実行（5分）
 
-`.github/CODEOWNERS` を編集：
+**重要**: ブランチ保護ルールを設定する前に、先にテストPRを作成してGitHub Actionsを実行します。
+これにより、Status checksが選択可能になります。
 
-```bash
-# 変更前
-* @your-org/core-team
-
-# 変更後（あなたのGitHubユーザー名に変更）
-* @your-github-username
-```
-
-コミット：
+### 3.1 テスト用ブランチ作成
 
 ```bash
-git add .github/CODEOWNERS
-git commit -m "chore: CODEOWNERSを更新"
-git push origin prod
-```
-
----
-
-## ステップ4: テストPR作成（5分）
-
-### 4.1 テスト用ブランチ作成
-
-```bash
+# developブランチに移動
 git checkout develop
-git checkout -b feature/test-ci-setup
 
-# 簡単な変更
-echo "" >> README.md
-echo "## CI/CD Setup Complete" >> README.md
+# テスト用ブランチ作成
+git checkout -b feature/test-ci
 
+# 簡単な変更を追加
+echo "# Test" >> README.md
+
+# コミット
 git add README.md
-git commit -m "test: CI/CDセットアップの動作確認"
-git push origin feature/test-ci-setup
+git commit -m "test: CI/CD動作確認"
+
+# プッシュ
+git push origin feature/test-ci
 ```
 
-### 4.2 PRを作成
+### 3.2 GitHub でPRを作成
 
-1. GitHub → **Pull requests** → **New pull request**
-2. base: `develop` ← compare: `feature/test-ci-setup`
-3. **Create pull request**
+1. GitHub リポジトリにアクセス
+2. **Pull requests** タブをクリック
+3. **New pull request** をクリック
+4. base: `develop` ← compare: `feature/test-ci` を選択
+5. **Create pull request** をクリック
 
-### 4.3 GitHub Actions の確認
+### 3.3 GitHub Actions の実行を確認
 
 **Actions** タブで以下が実行されることを確認：
 
@@ -163,38 +120,131 @@ git push origin feature/test-ci-setup
 - ✅ Integration Tests
 - ✅ Build Check
 
-### 4.4 Status checks を保護ルールに追加
+**実行完了を待ちます（約2-3分）**
 
-1. PRページで実行されたチェック項目を確認
-2. GitHub → **Settings** → **Branches** → `develop` の保護ルール編集
-3. "Status checks that are required" に以下を追加：
-   - `lint`
-   - `unit-test`
-   - `integration-test`
-   - `build`
-
-4. 同様に `staging` と `prod` にも追加（`e2e-test` も含める）
-
-### 4.5 PRをマージ
-
-全てのチェックが通ったら **Merge pull request**
+> この実行により、次のステップでStatus checksが選択可能になります。
 
 ---
 
-## ステップ5: Amplify セットアップ（30分）
+## ステップ4: ブランチ保護ルール設定（10分）
 
-### 5.1 Amplify アプリ作成
+GitHub Actions が実行された後、ブランチ保護ルールを設定します。
+
+### 4.1 develop ブランチの保護ルール
+
+GitHub → **Settings** → **Branches** → **Add branch protection rule**
+
+```text
+Branch name pattern: develop
+
+☑ Require a pull request before merging
+  Require approvals: 0  ← 一人なので0でOK
+
+☑ Require status checks to pass before merging
+  ☑ Require branches to be up to date before merging
+  
+  Status checks that are required:
+  ☑ Lint and Format Check (GitHub Actions)
+  ☑ unit-test (Any source)
+  ☑ integration-test (Any source)
+  ☑ Build Check (GitHub Actions)
+
+☐ Require conversation resolution before merging  ← オフ
+☐ Require linear history  ← オフ（好みで選択）
+```
+
+**Create** をクリック
+
+> **注意**: `develop`ブランチには`e2e-test`は不要です（developへのPRではE2Eテストは実行されません）
+
+### 4.2 staging ブランチの保護ルール
+
+```text
+Branch name pattern: staging
+
+☑ Require a pull request before merging
+  Require approvals: 0  ← 一人なので0でOK
+
+☑ Require status checks to pass before merging
+  ☑ Require branches to be up to date before merging
+  
+  Status checks that are required:
+  ☑ Lint and Format Check (GitHub Actions)
+  ☑ unit-test (Any source)
+  ☑ integration-test (Any source)
+  ☑ Build Check (GitHub Actions)
+  ☑ e2e-test (Any source)
+
+☐ Require conversation resolution before merging  ← オフ
+```
+
+**Create** をクリック
+
+### 4.3 prod ブランチの保護ルール
+
+```text
+Branch name pattern: prod
+
+☑ Require a pull request before merging
+  Require approvals: 0  ← 一人なので0でOK
+
+☑ Require status checks to pass before merging
+  ☑ Require branches to be up to date before merging
+  
+  Status checks that are required:
+  ☑ Lint and Format Check (GitHub Actions)
+  ☑ unit-test (Any source)
+  ☑ integration-test (Any source)
+  ☑ Build Check (GitHub Actions)
+  ☑ e2e-test (Any source)
+
+☐ Require conversation resolution before merging  ← オフ
+☐ Require linear history  ← オフ（好みで選択）
+```
+
+**Create** をクリック
+
+> **重要**: "Any source"は、GitHub Actionsワークフローから来るステータスチェックを受け入れる設定です。そのままでOKです。
+
+### 4.4 テストPRをマージ
+
+ステップ3で作成したPRに戻り、全てのチェックが通ったら **Merge pull request** をクリック
+
+---
+
+## ステップ5: CODEOWNERS 更新（5分）
+
+`.github/CODEOWNERS` を編集：
+
+```bash
+# developブランチで作業
+git checkout develop
+
+# CODEOWNERSファイルを編集
+# 変更前: * @your-org/core-team
+# 変更後: * @your-github-username
+
+git add .github/CODEOWNERS
+git commit -m "chore: CODEOWNERSを更新"
+git push origin develop
+```
+
+---
+
+## ステップ6: Amplify セットアップ（30分）
+
+### 6.1 Amplify アプリ作成
 
 1. [AWS Console](https://console.aws.amazon.com/) → **Amplify**
 2. **Create new app** → **Host web app**
 3. **GitHub** を選択 → リポジトリ選択
 4. ブランチ: `develop` を選択
 
-### 5.2 ビルド設定確認
+### 6.2 ビルド設定確認
 
 `amplify.yml` が自動検出されることを確認
 
-### 5.3 環境変数設定
+### 6.3 環境変数設定
 
 **Advanced settings** で以下を追加：
 
@@ -216,11 +266,11 @@ PASSWORD_RESET_EXPIRES_IN=1h
 PASSWORD_RESET_SECRET=dev-password-reset-secret-min-32-characters-long
 ```
 
-### 5.4 デプロイ開始
+### 6.4 デプロイ開始
 
 **Save and deploy** → デプロイ完了を待つ（5-10分）
 
-### 5.5 staging と prod ブランチを追加
+### 6.5 staging と prod ブランチを追加
 
 同様の手順で `staging` と `prod` ブランチも接続
 
@@ -231,14 +281,15 @@ PASSWORD_RESET_SECRET=dev-password-reset-secret-min-32-characters-long
 openssl rand -base64 32
 ```
 
-### 5.6 URLをコピー
+### 6.6 URLをコピー
 
 各環境のURLをコピー：
+
 - develop: `https://develop.xxxxx.amplifyapp.com`
 - staging: `https://staging.xxxxx.amplifyapp.com`
 - prod: `https://prod.xxxxx.amplifyapp.com`
 
-### 5.7 GitHub Secrets に追加
+### 6.7 GitHub Secrets に追加
 
 GitHub → **Settings** → **Secrets and variables** → **Actions**
 
@@ -248,13 +299,13 @@ STAGING_URL=https://staging.xxxxx.amplifyapp.com
 PROD_URL=https://prod.xxxxx.amplifyapp.com
 ```
 
-**詳細**: `docs/amplify-setup-guide.md`
+**詳細**: `docs/04-amplify-setup-guide.md`
 
 ---
 
-## ステップ6: 動作確認（10分）
+## ステップ7: 動作確認（10分）
 
-### 6.1 自動デプロイの確認
+### 7.1 自動デプロイの確認
 
 ```bash
 # developブランチで変更
@@ -267,14 +318,15 @@ git push origin develop
 
 Amplify Console でビルドが自動開始されることを確認
 
-### 6.2 アプリの動作確認
+### 7.2 アプリの動作確認
 
 各環境のURLにアクセス：
-- https://develop.xxxxx.amplifyapp.com
-- https://staging.xxxxx.amplifyapp.com
-- https://prod.xxxxx.amplifyapp.com
 
-### 6.3 E2Eテストの確認（staging/prod のみ）
+- <https://develop.xxxxx.amplifyapp.com>
+- <https://staging.xxxxx.amplifyapp.com>
+- <https://prod.xxxxx.amplifyapp.com>
+
+### 7.3 E2Eテストの確認（staging/prod のみ）
 
 ```bash
 # stagingへのPRを作成
@@ -290,14 +342,16 @@ git push origin staging
 ## 完了チェックリスト
 
 ### GitHub 設定
+
 - [ ] GitHub Secrets 設定完了
 - [ ] ブランチ作成完了（prod, staging, develop）
+- [ ] テストPR作成・実行完了
 - [ ] ブランチ保護ルール設定完了
+- [ ] テストPRマージ完了
 - [ ] CODEOWNERS 更新完了
-- [ ] テストPR作成・マージ完了
-- [ ] Status checks 追加完了
 
 ### Amplify 設定
+
 - [ ] Amplify アプリ作成完了
 - [ ] develop ブランチ接続完了
 - [ ] staging ブランチ接続完了
@@ -306,6 +360,7 @@ git push origin staging
 - [ ] GitHub Secrets に URL 追加完了
 
 ### 動作確認
+
 - [ ] 自動デプロイ動作確認
 - [ ] 各環境のアプリ動作確認
 - [ ] GitHub Actions 実行確認
@@ -315,22 +370,26 @@ git push origin staging
 
 ## トラブルシューティング
 
+### Status checks が表示されない
+
+**原因**: GitHub Actionsがまだ実行されていない
+
+**解決方法**:
+
+1. 先にPRを作成してGitHub Actionsを実行
+2. その後、ブランチ保護ルールで選択可能になる
+
 ### GitHub Actions が失敗する
 
 1. **Actions** タブでエラーログを確認
 2. Secrets が正しく設定されているか確認
-3. `docs/testing-guide.md` のトラブルシューティングを参照
+3. `docs/08-testing-guide.md` のトラブルシューティングを参照
 
 ### Amplify ビルドが失敗する
 
 1. Amplify Console でビルドログを確認
 2. 環境変数が正しく設定されているか確認
-3. `docs/amplify-setup-guide.md` のトラブルシューティングを参照
-
-### Status checks が表示されない
-
-1. 先にPRを作成してGitHub Actionsを実行
-2. その後、ブランチ保護ルールで選択可能になる
+3. `docs/04-amplify-setup-guide.md` のトラブルシューティングを参照
 
 ---
 
@@ -348,9 +407,11 @@ CI/CDセットアップ完了後：
 
 ## 参考ドキュメント
 
-- `docs/github-secrets-checklist.md` - GitHub Secrets 詳細
-- `docs/branch-setup-guide.md` - ブランチ設定詳細
-- `docs/amplify-setup-guide.md` - Amplify 設定詳細
-- `docs/setup-ci-cd.md` - CI/CD 全体ガイド
-- `docs/branching-strategy.md` - ブランチ戦略
-- `docs/testing-guide.md` - テストガイド
+- `docs/02-github-secrets-checklist.md` - GitHub Secrets 詳細
+- `docs/03-branch-setup-guide.md` - ブランチ設定詳細
+- `docs/04-amplify-setup-guide.md` - Amplify 設定詳細
+- `docs/05-setup-ci-cd-reference.md` - CI/CD 全体ガイド
+- `docs/06-branching-strategy-reference.md` - ブランチ戦略
+- `docs/07-branch-naming.md` - ブランチ命名規則
+- `docs/08-testing-guide.md` - テストガイド
+- `docs/ci-cd-quickstart-team.md` - チーム開発版クイックスタート
