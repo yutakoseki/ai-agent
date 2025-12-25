@@ -1,11 +1,13 @@
 name: Deploy Notification
 
+# 一人開発のため、Slack通知は無効化
+# 必要な場合は SLACK_WEBHOOK_URL シークレットを設定してコメントを解除
 on:
   push:
     branches:
-      - develop
-      - staging
-      - prod
+      - _disabled_develop
+      - _disabled_staging
+      - _disabled_prod
 
 jobs:
   notify:
@@ -34,18 +36,17 @@ jobs:
       - name: Get commit info
         id: commit
         run: |
-          # 改行を削除してエスケープ
           MESSAGE=$(git log -1 --pretty=%B | tr '\n' ' ' | sed 's/"/\\"/g')
           echo "message=${MESSAGE}" >> $GITHUB_OUTPUT
           echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
           echo "sha=$(git log -1 --pretty=%h)" >> $GITHUB_OUTPUT
 
       - name: Notify Slack
-        # SLACK_WEBHOOK が設定されている場合のみ実行
-        if: always() && secrets.SLACK_WEBHOOK != ''
+        if: secrets.SLACK_WEBHOOK_URL != ''
         uses: 8398a7/action-slack@v3
         with:
           status: custom
+          fields: repo,message,commit,author
           custom_payload: |
             {
               "text": "${{ steps.env.outputs.environment }} へのデプロイが開始されました",
@@ -85,4 +86,5 @@ jobs:
                 ]
               }]
             }
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
