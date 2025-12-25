@@ -32,5 +32,5 @@
 
 ## 運用メモ
 - PR 時: lint/test/sbom/terraform plan を必須。build はオプションでも可（頻度次第）。
-- main へのマージ後: build とデプロイ（Amplify Gen2）、AgentCore コンテナビルド/プッシュをトリガ。
+- prod へのマージ後: build とデプロイ（Amplify Gen2）、AgentCore コンテナビルド/プッシュをトリガ。
 

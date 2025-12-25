@@ -1,0 +1,29 @@
+# Code Owners
+# このファイルは、特定のファイルやディレクトリに対する
+# デフォルトのレビュアーを定義します
+
+# デフォルト: 全てのファイル
+* @your-org/core-team
+
+# 認証・セキュリティ関連
+/apps/web/lib/auth/ @your-org/security-team
+/apps/web/lib/middleware/ @your-org/security-team
+/apps/web/app/api/auth/ @your-org/security-team
+
+# インフラ・デプロイ関連
+/infra/ @your-org/devops-team
+/.github/workflows/ @your-org/devops-team
+/amplify.yml @your-org/devops-team
+
+# ドキュメント
+/docs/ @your-org/tech-writers
+
+# テスト
+/**/*.test.ts @your-org/qa-team
+/**/*.integration.test.ts @your-org/qa-team
+/**/*.e2e.test.ts @your-org/qa-team
+
+# 設定ファイル
+/.cursorrule @your-org/core-team
+/package.json @your-org/core-team
+/pnpm-workspace.yaml @your-org/core-team

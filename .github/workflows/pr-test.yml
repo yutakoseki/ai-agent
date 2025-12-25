@@ -1,0 +1,144 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - prod
+
+jobs:
+  lint:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm --filter @ai-agent/web lint
+
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm --filter @ai-agent/web test
+        env:
+          JWT_SECRET: test-jwt-secret-min-32-characters-long-for-testing
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          SESSION_COOKIE_NAME: session
+          SESSION_COOKIE_SECURE: false
+          PASSWORD_RESET_EXPIRES_IN: 1h
+          PASSWORD_RESET_SECRET: test-password-reset-secret-min-32-characters-long
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./apps/web/coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run integration tests
+        run: pnpm --filter @ai-agent/web test:integration
+        env:
+          JWT_SECRET: test-jwt-secret-min-32-characters-long-for-testing
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          SESSION_COOKIE_NAME: session
+          SESSION_COOKIE_SECURE: false
+          PASSWORD_RESET_EXPIRES_IN: 1h
+          PASSWORD_RESET_SECRET: test-password-reset-secret-min-32-characters-long
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: integration-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm --filter @ai-agent/web build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://example.com/api
+          API_BASE_URL: https://example.com/internal
+          DATABASE_URL: postgres://user:pass@host:5432/dbname
+          QUEUE_URL: amqp://user:pass@host:5672/vhost
+          AGENTCORE_API_URL: https://agent-core.example.com
+          AGENTCORE_QUEUE_NAME: agent-core-jobs
+          AMPLIFY_REGION: ap-northeast-1
+          AMPLIFY_BRANCH: main
+          JWT_SECRET: build-time-secret-min-32-characters-long
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          SESSION_COOKIE_NAME: session
+          SESSION_COOKIE_SECURE: true
+          PASSWORD_RESET_EXPIRES_IN: 1h
+          PASSWORD_RESET_SECRET: build-time-password-reset-secret-min-32-characters-long

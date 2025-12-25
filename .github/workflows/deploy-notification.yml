@@ -1,0 +1,85 @@
+name: Deploy Notification
+
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - prod
+
+jobs:
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
+            echo "environment=🚀 本番環境" >> $GITHUB_OUTPUT
+            echo "color=#FF0000" >> $GITHUB_OUTPUT
+            echo "url=${{ secrets.PROD_URL }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "environment=🧪 ステージング環境" >> $GITHUB_OUTPUT
+            echo "color=#FFA500" >> $GITHUB_OUTPUT
+            echo "url=${{ secrets.STAGING_URL }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=🔧 開発環境" >> $GITHUB_OUTPUT
+            echo "color=#00FF00" >> $GITHUB_OUTPUT
+            echo "url=${{ secrets.DEV_URL }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get commit info
+        id: commit
+        run: |
+          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+          echo "sha=$(git log -1 --pretty=%h)" >> $GITHUB_OUTPUT
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ steps.env.outputs.environment }} へのデプロイが開始されました",
+              "attachments": [{
+                "color": "${{ steps.env.outputs.color }}",
+                "fields": [
+                  {
+                    "title": "環境",
+                    "value": "${{ steps.env.outputs.environment }}",
+                    "short": true
+                  },
+                  {
+                    "title": "ブランチ",
+                    "value": "${{ github.ref_name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "コミット",
+                    "value": "${{ steps.commit.outputs.sha }}",
+                    "short": true
+                  },
+                  {
+                    "title": "作成者",
+                    "value": "${{ steps.commit.outputs.author }}",
+                    "short": true
+                  },
+                  {
+                    "title": "コミットメッセージ",
+                    "value": "${{ steps.commit.outputs.message }}",
+                    "short": false
+                  },
+                  {
+                    "title": "URL",
+                    "value": "${{ steps.env.outputs.url }}",
+                    "short": false
+                  }
+                ]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

@@ -1,0 +1,291 @@
+# 開発ロードマップ
+
+Amplify デプロイ完了後の機能開発優先順位と実装タスク一覧。
+
+## フェーズ 1: 認証基盤とテナント管理（最優先）
+
+### 目的
+
+マルチテナント SaaS の土台を構築。すべての機能がこれに依存するため最優先で実装。
+
+### タスク
+
+#### 1.1 BFF ミドルウェア実装
+
+- [x] Next.js Route Handler 用の認証ミドルウェア作成
+- [x] セッション検証ロジック（Cookie/JWT）
+- [x] テナント解決ロジック（ユーザー → テナント紐付け）
+- [x] RBAC チェック機能（Admin/Manager/Member）
+- [x] トレース ID 付与とログ出力
+- [x] エラー分類と適切なレスポンス返却
+
+#### 1.2 認証機能
+
+- [x] ログイン/ログアウト API
+- [x] セッション管理（Secure/HttpOnly/SameSite 設定）
+- [x] リフレッシュトークンローテーション
+- [ ] パスワードリセット機能
+- [ ] MFA 対応（暫定で Email+Pass）
+
+#### 1.3 テナント管理 API
+
+- [x] テナント作成 API（POST /api/tenants）
+- [x] テナント情報取得 API（GET /api/tenants/:id）
+- [x] テナント更新 API（PATCH /api/tenants/:id）
+- [x] テナント一覧取得 API（GET /api/tenants）
+- [x] テナント削除/無効化 API
+
+#### 1.4 ユーザー管理 API
+
+- [x] ユーザー作成 API（POST /api/users）
+- [x] ユーザー情報取得 API（GET /api/users/:id）
+- [x] ユーザー更新 API（PATCH /api/users/:id）
+- [x] テナント内ユーザー一覧取得 API
+- [x] ユーザー役割変更 API
+
+### 成果物
+
+- `apps/web/lib/middleware/auth.ts` : 認証・テナント・RBAC ミドルウェア ✅
+- `apps/web/lib/middleware/error.ts` : エラーハンドリング ✅
+- `apps/web/lib/auth/jwt.ts` : JWT 生成・検証 ✅
+- `apps/web/lib/auth/session.ts` : セッション管理 ✅
+- `apps/web/lib/auth/password.ts` : パスワードハッシュ化 ✅
+- `apps/web/app/api/auth/*` : 認証関連 API ✅
+- `apps/web/app/api/tenants/*` : テナント管理 API ✅
+- `apps/web/app/api/users/*` : ユーザー管理 API ✅
+- `packages/types/src/auth.ts` : 認証関連型定義 ✅
+- `packages/types/src/tenant.ts` : テナント関連型定義 ✅
+- `packages/types/src/user.ts` : ユーザー関連型定義 ✅
+- `packages/types/src/error.ts` : エラー関連型定義 ✅
+- `packages/config/src/env.ts` : 環境変数設定（認証関連追加） ✅
+- `config/env.example` : 環境変数サンプル（認証関連追加） ✅
+
+---
+
+## フェーズ 2: DB 設計と RLS 設定
+
+### 目的
+
+テナント分離を保証するデータベース基盤を構築。
+
+### タスク
+
+#### 2.1 コアテーブル設計
+
+- [ ] `tenants` テーブル（id, name, plan, created_at, updated_at）
+- [ ] `users` テーブル（id, tenant_id, email, role, created_at）
+- [ ] `agents` テーブル（id, tenant_id, name, type, config, created_at）
+- [ ] `entitlements` テーブル（tenant_id, agent_id, enabled, quota_limit）
+- [ ] `agent_executions` テーブル（id, tenant_id, agent_id, user_id, input, output, status, trace_id）
+- [ ] `audit_logs` テーブル（id, tenant_id, user_id, action, resource, details, created_at）
+
+#### 2.2 RLS ポリシー実装
+
+- [ ] 各テーブルに RLS 有効化
+- [ ] `tenant_id`による行レベルセキュリティポリシー作成
+- [ ] セッション変数 `app.tenant_id` の設定ロジック
+- [ ] ポリシーテストケース作成
+
+#### 2.3 マイグレーション基盤
+
+- [ ] マイグレーションツール選定（Prisma/Drizzle/SQL 直接）
+- [ ] 初期スキーママイグレーション作成
+- [ ] ロールバック手順の確立
+- [ ] 環境別マイグレーション実行手順
+
+#### 2.4 DB 接続と ORM 設定
+
+- [ ] 接続プール設定
+- [ ] `tenant_id`自動設定ヘルパー関数
+- [ ] トランザクション管理
+- [ ] クエリログ設定
+
+### 成果物
+
+- `infra/db/migrations/*` : マイグレーションファイル
+- `infra/db/schema.sql` : スキーマ定義
+- `packages/db/*` : DB 接続・ORM 設定
+- `docs/architecture/database.md` : DB 設計ドキュメント
+
+---
+
+## フェーズ 3: エンタイトルメント/クォータ管理
+
+### 目的
+
+テナント × エージェント単位での利用制御とクォータ管理を実装。
+
+### タスク
+
+#### 3.1 プラン定義
+
+- [ ] プラン種別定義（Basic/Pro/Enterprise）
+- [ ] プラン別デフォルトクォータ設定
+- [ ] プラン別機能制限定義
+- [ ] プラン変更ロジック
+
+#### 3.2 エンタイトルメントチェック
+
+- [ ] エンタイトルメント取得 API
+- [ ] エンタイトルメント更新 API
+- [ ] 実行前チェックミドルウェア
+- [ ] 利用可否判定ロジック
+
+#### 3.3 クォータ管理
+
+- [ ] クォータ残量取得 API
+- [ ] クォータ消費記録ロジック
+- [ ] クォータリセット（月次）バッチ
+- [ ] クォータ超過時のエラーハンドリング
+- [ ] クォータアラート機能
+
+#### 3.4 使用量レポート
+
+- [ ] テナント別使用量集計 API
+- [ ] エージェント別使用量集計 API
+- [ ] 期間指定レポート生成
+- [ ] CSV/JSON エクスポート機能
+
+### 成果物
+
+- `apps/web/app/api/entitlements/*` : エンタイトルメント管理 API
+- `apps/web/app/api/quotas/*` : クォータ管理 API
+- `packages/types/src/entitlement.ts` : エンタイトルメント型定義
+- `docs/architecture/entitlement.md` : エンタイトルメント設計ドキュメント
+
+---
+
+## フェーズ 4: エージェント実行基盤
+
+### 目的
+
+AgentCore との連携とエージェント実行の基盤を構築。
+
+### タスク
+
+#### 4.1 非同期キュー連携
+
+- [ ] キューシステム選定（SQS/Redis/RabbitMQ）
+- [ ] ジョブエンキューロジック
+- [ ] ワーカー実装（AgentCore 側）
+- [ ] ジョブステータス管理
+- [ ] 冪等性キー実装
+
+#### 4.2 AgentCore API 設計
+
+- [ ] エージェント実行 API 仕様定義
+- [ ] 入出力スキーマ定義
+- [ ] エラーレスポンス仕様
+- [ ] タイムアウト設定
+- [ ] リトライポリシー定義
+
+#### 4.3 監査ログ記録
+
+- [ ] 実行開始時ログ記録
+- [ ] 実行完了時ログ記録（入力/出力）
+- [ ] エラー時ログ記録
+- [ ] 承認ゲート通過ログ
+- [ ] PII マスキング処理
+
+#### 4.4 実行結果管理
+
+- [ ] 実行履歴取得 API
+- [ ] 実行詳細取得 API
+- [ ] 実行キャンセル API
+- [ ] 実行結果の保持期間管理
+
+#### 4.5 承認ゲート（write 系エージェント用）
+
+- [ ] 承認待ちキュー
+- [ ] 承認/却下 API
+- [ ] 承認者権限チェック
+- [ ] 承認履歴記録
+
+### 成果物
+
+- `services/agent-core/src/queue/*` : キュー処理
+- `services/agent-core/src/executor/*` : エージェント実行ロジック
+- `apps/web/app/api/executions/*` : 実行管理 API
+- `apps/web/app/api/approvals/*` : 承認ゲート API
+- `packages/types/src/execution.ts` : 実行関連型定義
+
+---
+
+## フェーズ 5: 最小限のエージェント実装（PoC）
+
+### 目的
+
+フェーズ 1〜4 の機能を実際に動かして検証。
+
+### タスク
+
+#### 5.1 シンプルな read-only エージェント選定
+
+- [ ] エージェント種別決定（例：情報取得、データ検索）
+- [ ] 必要なコネクタ/API の洗い出し
+- [ ] スコープ定義（read-only）
+
+#### 5.2 エージェント実装
+
+- [ ] AgentCore 側の実装
+- [ ] 入出力スキーマ定義
+- [ ] エラーハンドリング
+- [ ] ログ出力
+
+#### 5.3 フロントエンド実装
+
+- [ ] エージェント実行画面
+- [ ] 実行履歴表示画面
+- [ ] 実行結果表示
+- [ ] エラー表示
+
+#### 5.4 E2E テスト
+
+- [ ] ログイン → エージェント実行 → 結果確認の一連フロー
+- [ ] テナント分離の検証
+- [ ] クォータ制限の検証
+- [ ] 監査ログ記録の検証
+
+#### 5.5 パフォーマンステスト
+
+- [ ] 負荷テスト実施
+- [ ] ボトルネック特定
+- [ ] 最適化実施
+
+### 成果物
+
+- `services/agent-core/src/agents/sample/*` : サンプルエージェント実装
+- `apps/web/app/agents/*` : エージェント実行 UI
+- `apps/web/app/executions/*` : 実行履歴 UI
+- `docs/agents/sample-agent.md` : サンプルエージェント仕様書
+
+---
+
+## 補足事項
+
+### 各フェーズ共通タスク
+
+- [ ] ユニットテスト作成
+- [ ] コンポーネントテスト作成（フロントエンド）
+- [ ] API 疎通テスト作成
+- [ ] ドキュメント更新
+- [ ] パラメーターシート更新
+
+### 技術的負債管理
+
+- 各フェーズで発生した技術的負債を記録
+- 優先度付けと対応計画の策定
+
+### セキュリティレビュー
+
+- 各フェーズ完了時にセキュリティチェックリスト確認
+- 脆弱性スキャン実施
+
+---
+
+## 次のステップ
+
+1. フェーズ 1 から順次着手
+2. 各タスク完了時にチェックボックスを更新
+3. 問題や変更があればこのドキュメントを更新
+4. フェーズ 5 完了後、次の機能開発計画を策定
