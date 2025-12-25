@@ -44,8 +44,8 @@ git push origin develop
 git checkout -b staging
 git push origin staging
 
-# mainに戻る
-git checkout prod
+# prodブランチを作成
+git checkout - b prod
 git push origin prod
 ```
 

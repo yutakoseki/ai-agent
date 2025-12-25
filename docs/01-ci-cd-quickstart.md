@@ -266,22 +266,59 @@ git push origin develop
 **Advanced settings** で以下を追加：
 
 ```bash
-NEXT_PUBLIC_API_BASE_URL=https://api-dev.example.com
-API_BASE_URL=https://internal-api-dev.example.com
+# ブラウザから利用するAPIのベースURL（Next.jsのAPI RoutesならアプリURLと同一）
+NEXT_PUBLIC_API_BASE_URL=https://develop.xxxxx.amplifyapp.com
+
+# サーバーサイドから利用する内部APIのベースURL（同一オリジンなら上と同じ値）
+API_BASE_URL=https://develop.xxxxx.amplifyapp.com
+
+# アプリケーションが接続するDBの接続文字列（RDBを使う場合）
 DATABASE_URL=postgres://user:pass@localhost:5432/dev_db
+
+# 非同期ジョブ用のメッセージキュー（AMQP等）の接続URL
 QUEUE_URL=amqp://user:pass@localhost:5672/vhost
+
+# agent-coreサービスのAPIベースURL
 AGENTCORE_API_URL=https://agent-core-dev.example.com
+
+# agent-coreが利用するキュー名
 AGENTCORE_QUEUE_NAME=agent-core-jobs-dev
+
+# Amplify（AWS）**のリージョン**
 AMPLIFY_REGION=ap-northeast-1
+
+# デプロイ対象のブランチ名（環境識別に使用）
 AMPLIFY_BRANCH=develop
+
+# 認証用JWTの署名キー（本番は強力なランダム文字列）
 JWT_SECRET=dev-jwt-secret-min-32-characters-long-change-in-production
+
+# アクセストークンの有効期限
 JWT_ACCESS_EXPIRES_IN=15m
+
+# リフレッシュトークンの有効期限
 JWT_REFRESH_EXPIRES_IN=7d
+
+# セッションCookieの名前
 SESSION_COOKIE_NAME=session
-SESSION_COOKIE_SECURE=false
+
+# Cookieの`Secure`属性（`true`ならHTTPSのみ）
+SESSION_COOKIE_SECURE=true
+
+# パスワードリセットトークンの有効期限
 PASSWORD_RESET_EXPIRES_IN=1h
+
+# パスワードリセット用トークンの署名キー（本番は強力なランダム文字列）
 PASSWORD_RESET_SECRET=dev-password-reset-secret-min-32-characters-long
 ```
+
+#### 値が未確定な場合の扱い
+
+- この一覧の値は例なので、各環境の実値に置き換える（未準備なら一時的にダミーでも可）
+- AmplifyのURLは初回デプロイ後に確定するため、決まり次第 `NEXT_PUBLIC_API_BASE_URL` と `API_BASE_URL` を更新する
+- Next.jsのAPI Routesを使う構成なら、両方とも同じアプリURLにする（別バックエンドなら分ける）
+- 本番環境では `JWT_SECRET` と `PASSWORD_RESET_SECRET` は必ず強力なランダム文字列にする
+- DynamoDB利用予定の場合は `DATABASE_URL` を使わないため、DynamoDB用の設定に置き換える（必要なら `packages/config/src/env.ts` も更新）
 
 ### 6.4 デプロイ開始
 
