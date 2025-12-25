@@ -130,58 +130,11 @@ git push origin feature/test-ci
 
 GitHub Actions が実行された後、ブランチ保護ルールを設定します。
 
-### 4.1 prod ブランチの保護ルール
+### 4.1 develop ブランチの保護ルール
 
 GitHub → **Settings** → **Branches** → **Add branch protection rule**
 
-```
-Branch name pattern: prod
-
-☑ Require a pull request before merging
-  Require approvals: 0  ← 一人なので0でOK
-
-☑ Require status checks to pass before merging
-  ☑ Require branches to be up to date before merging
-  
-  Status checks:
-  ☑ lint
-  ☑ unit-test
-  ☑ integration-test
-  ☑ build
-  ☑ e2e-test
-
-☐ Require conversation resolution before merging  ← オフ
-☐ Require linear history  ← オフ（好みで選択）
-```
-
-**Create** をクリック
-
-### 4.2 staging ブランチの保護ルール
-
-```
-Branch name pattern: staging
-
-☑ Require a pull request before merging
-  Require approvals: 0  ← 一人なので0でOK
-
-☑ Require status checks to pass before merging
-  ☑ Require branches to be up to date before merging
-  
-  Status checks:
-  ☑ lint
-  ☑ unit-test
-  ☑ integration-test
-  ☑ build
-  ☑ e2e-test
-
-☐ Require conversation resolution before merging  ← オフ
-```
-
-**Create** をクリック
-
-### 4.3 develop ブランチの保護ルール
-
-```
+```text
 Branch name pattern: develop
 
 ☑ Require a pull request before merging
@@ -190,16 +143,68 @@ Branch name pattern: develop
 ☑ Require status checks to pass before merging
   ☑ Require branches to be up to date before merging
   
-  Status checks:
-  ☑ lint
-  ☑ unit-test
-  ☑ integration-test
-  ☑ build
+  Status checks that are required:
+  ☑ Lint and Format Check (GitHub Actions)
+  ☑ unit-test (Any source)
+  ☑ integration-test (Any source)
+  ☑ Build Check (GitHub Actions)
+
+☐ Require conversation resolution before merging  ← オフ
+☐ Require linear history  ← オフ（好みで選択）
+```
+
+**Create** をクリック
+
+> **注意**: `develop`ブランチには`e2e-test`は不要です（developへのPRではE2Eテストは実行されません）
+
+### 4.2 staging ブランチの保護ルール
+
+```text
+Branch name pattern: staging
+
+☑ Require a pull request before merging
+  Require approvals: 0  ← 一人なので0でOK
+
+☑ Require status checks to pass before merging
+  ☑ Require branches to be up to date before merging
+  
+  Status checks that are required:
+  ☑ Lint and Format Check (GitHub Actions)
+  ☑ unit-test (Any source)
+  ☑ integration-test (Any source)
+  ☑ Build Check (GitHub Actions)
+  ☑ e2e-test (Any source)
 
 ☐ Require conversation resolution before merging  ← オフ
 ```
 
 **Create** をクリック
+
+### 4.3 prod ブランチの保護ルール
+
+```text
+Branch name pattern: prod
+
+☑ Require a pull request before merging
+  Require approvals: 0  ← 一人なので0でOK
+
+☑ Require status checks to pass before merging
+  ☑ Require branches to be up to date before merging
+  
+  Status checks that are required:
+  ☑ Lint and Format Check (GitHub Actions)
+  ☑ unit-test (Any source)
+  ☑ integration-test (Any source)
+  ☑ Build Check (GitHub Actions)
+  ☑ e2e-test (Any source)
+
+☐ Require conversation resolution before merging  ← オフ
+☐ Require linear history  ← オフ（好みで選択）
+```
+
+**Create** をクリック
+
+> **重要**: "Any source"は、GitHub Actionsワークフローから来るステータスチェックを受け入れる設定です。そのままでOKです。
 
 ### 4.4 テストPRをマージ
 
