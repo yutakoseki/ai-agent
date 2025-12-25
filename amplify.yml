@@ -10,6 +10,7 @@ applications:
         build:
           commands:
             - pnpm build
+            - cp .next/required-server-files.json ./required-server-files.json
       artifacts:
         baseDirectory: .
         files:

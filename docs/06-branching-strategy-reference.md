@@ -24,7 +24,7 @@ feature/* (機能開発)
 - **保護**: 直接 push は禁止、PR のみ
 - **デプロイ**: 自動デプロイ（Amplify）
 - **テスト**: E2E + 全テスト必須
-- **レビュー**: 2 名以上の承認必須
+- **レビュー**: 0 名以上の承認必須
 
 #### 2. `staging` - ステージング環境
 
@@ -32,7 +32,7 @@ feature/* (機能開発)
 - **保護**: 直接 push は禁止、PR のみ
 - **デプロイ**: 自動デプロイ（Amplify）
 - **テスト**: 統合テスト + E2E
-- **レビュー**: 1 名以上の承認必須
+- **レビュー**: 0 名以上の承認必須
 
 #### 3. `develop` - 開発環境
 
@@ -40,7 +40,7 @@ feature/* (機能開発)
 - **保護**: 直接 push は禁止、PR のみ
 - **デプロイ**: 自動デプロイ（Amplify）
 - **テスト**: 単体テスト + 統合テスト
-- **レビュー**: 1 名以上の承認必須
+- **レビュー**: 0 名以上の承認必須
 
 #### 4. `feature/*` - 機能開発ブランチ
 
@@ -509,79 +509,6 @@ Closes #
 
 <!-- その他、レビュアーに伝えたいことがあれば記載 -->
 ```
-
----
-
-## ブランチ保護ルール
-
-### GitHub Settings → Branches → Branch protection rules
-
-#### `prod` ブランチ
-
-```yaml
-Protect matching branches: ✅
-
-Require a pull request before merging: ✅
-  - Require approvals: 2
-  - Dismiss stale pull request approvals when new commits are pushed: ✅
-  - Require review from Code Owners: ✅
-
-Require status checks to pass before merging: ✅
-  - Require branches to be up to date before merging: ✅
-  - Status checks that are required:
-    - lint
-    - unit-test
-    - integration-test
-    - build
-    - e2e-test
-
-Require conversation resolution before merging: ✅
-
-Require signed commits: ✅
-
-Require linear history: ✅
-
-Do not allow bypassing the above settings: ✅
-```
-
-#### `staging` ブランチ
-
-```yaml
-Protect matching branches: ✅
-
-Require a pull request before merging: ✅
-  - Require approvals: 1
-  - Dismiss stale pull request approvals when new commits are pushed: ✅
-
-Require status checks to pass before merging: ✅
-  - Require branches to be up to date before merging: ✅
-  - Status checks that are required:
-    - lint
-    - unit-test
-    - integration-test
-    - build
-    - e2e-test
-
-Require conversation resolution before merging: ✅
-```
-
-#### `develop` ブランチ
-
-```yaml
-Protect matching branches: ✅
-
-Require a pull request before merging: ✅
-  - Require approvals: 1
-
-Require status checks to pass before merging: ✅
-  - Status checks that are required:
-    - lint
-    - unit-test
-    - integration-test
-    - build
-```
-
----
 
 ## デプロイ戦略
 
