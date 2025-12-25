@@ -214,15 +214,32 @@ Branch name pattern: prod
 
 ## ステップ5: CODEOWNERS 更新（5分）
 
-`.github/CODEOWNERS` を編集：
+### 更新する理由
+- PRの自動レビュアー割り当てが有効になり、レビュー漏れを防げる
+- ブランチ保護の「CODEOWNERSの承認必須」を使う場合、正しい所有者が必要
+- プレースホルダのままだと通知・承認が正しく機能しない
+
+### 更新方法
+1. `develop` ブランチで作業
+2. `.github/CODEOWNERS` の `@your-org/...` を実在するユーザー名またはチーム名に置換
+3. 変更をコミットして push
 
 ```bash
-# developブランチで作業
+# 変更前（例）
+* @your-org/core-team
+
+# 変更後（あなたのGitHubユーザー名に変更）
+* @your-github-username
+```
+
+```bash
 git checkout develop
 
-# CODEOWNERSファイルを編集
-# 変更前: * @your-org/core-team
-# 変更後: * @your-github-username
+# 置換例
+sed -i 's/@your-org\/core-team/@yutakoseki/g' .github/CODEOWNERS
+
+# 置換後の確認（任意）
+grep -n "@your-org" .github/CODEOWNERS
 
 git add .github/CODEOWNERS
 git commit -m "chore: CODEOWNERSを更新"
