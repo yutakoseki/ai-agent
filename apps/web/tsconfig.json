@@ -3,12 +3,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@config/*": [
-        "../../packages/config/src/*"
-      ],
-      "@types/*": [
-        "../../packages/types/src/*"
-      ]
+      "@/*": ["./*"],
+      "@config/*": ["../../packages/config/src/*"],
+      "@types/*": ["../../packages/types/src/*"]
     },
     "incremental": true,
     "isolatedModules": true,
@@ -19,13 +16,6 @@
       }
     ]
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }
