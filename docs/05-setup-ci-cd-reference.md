@@ -1,233 +1,3 @@
-# CI/CD セットアップガイド
-
-このドキュメントでは、GitHub Actions と Amplify を使った CI/CD パイプラインのセットアップ手順を説明します。
-
-## 前提条件
-
-- GitHub リポジトリが作成済み
-- AWS アカウントが作成済み
-- Amplify アプリが作成済み
-
----
-
-## 1. GitHub リポジトリの設定
-
-### 1.1 ブランチ保護ルールの設定
-
-1. GitHub リポジトリ → **Settings** → **Branches**
-2. **Add branch protection rule** をクリック
-
-#### `prod` ブランチの設定
-
-```
-Branch name pattern: prod
-
-☑ Require a pull request before merging
-  ☑ Require approvals: 2
-  ☑ Dismiss stale pull request approvals when new commits are pushed
-  ☑ Require review from Code Owners
-
-☑ Require status checks to pass before merging
-  ☑ Require branches to be up to date before merging
-  Status checks:
-    - lint
-    - unit-test
-    - integration-test
-    - build
-    - e2e-test
-
-☑ Require conversation resolution before merging
-☑ Require signed commits
-☑ Require linear history
-☑ Do not allow bypassing the above settings
-```
-
-#### `staging` ブランチの設定
-
-```
-Branch name pattern: staging
-
-☑ Require a pull request before merging
-  ☑ Require approvals: 1
-  ☑ Dismiss stale pull request approvals when new commits are pushed
-
-☑ Require status checks to pass before merging
-  ☑ Require branches to be up to date before merging
-  Status checks:
-    - lint
-    - unit-test
-    - integration-test
-    - build
-    - e2e-test
-
-☑ Require conversation resolution before merging
-```
-
-#### `develop` ブランチの設定
-
-```
-Branch name pattern: develop
-
-☑ Require a pull request before merging
-  ☑ Require approvals: 1
-
-☑ Require status checks to pass before merging
-  Status checks:
-    - lint
-    - unit-test
-    - integration-test
-    - build
-```
-
-### 1.2 Secrets の設定
-
-1. GitHub リポジトリ → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret** をクリック
-
-#### 必要な Secrets
-
-```bash
-# テスト用
-TEST_JWT_SECRET=test-jwt-secret-min-32-characters-long-for-testing
-TEST_DATABASE_URL=postgres://test:test@localhost:5432/test_db
-
-# 環境別URL
-DEV_URL=https://dev.example.com
-STAGING_URL=https://staging.example.com
-PROD_URL=https://example.com
-
-# Slack通知（オプション）
-SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-
-# Codecov（オプション）
-CODECOV_TOKEN=your-codecov-token
-```
-
-### 1.3 CODEOWNERS の設定
-
-`.github/CODEOWNERS` ファイルを編集して、チームメンバーを設定：
-
-```
-# デフォルト
-* @your-org/core-team
-
-# セキュリティ関連
-/apps/web/lib/auth/ @your-org/security-team
-/apps/web/lib/middleware/ @your-org/security-team
-
-# インフラ関連
-/infra/ @your-org/devops-team
-/.github/workflows/ @your-org/devops-team
-```
-
----
-
-## 2. AWS Amplify の設定
-
-### 2.1 Amplify アプリの作成
-
-1. AWS Console → **Amplify** → **New app** → **Host web app**
-2. GitHub リポジトリを選択
-3. ブランチを選択（`develop`, `staging`, `prod`）
-
-### 2.2 ビルド設定
-
-`amplify.yml` を確認・編集：
-
-```yaml
-version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm install -g pnpm@8
-        - pnpm install --frozen-lockfile
-    build:
-      commands:
-        - pnpm --filter @ai-agent/web build
-  artifacts:
-    baseDirectory: apps/web/.next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
-      - .next/cache/**/*
-```
-
-### 2.3 環境変数の設定
-
-各環境（develop, staging, prod）で以下を設定：
-
-1. Amplify Console → アプリ選択 → **Environment variables**
-2. 環境変数を追加：
-
-```bash
-# 公開可能な変数
-NEXT_PUBLIC_API_BASE_URL=https://api.example.com
-
-# サーバーサイド変数
-API_BASE_URL=https://internal-api.example.com
-DATABASE_URL=postgres://user:pass@host:5432/dbname
-QUEUE_URL=amqp://user:pass@host:5672/vhost
-AGENTCORE_API_URL=https://agent-core.example.com
-AGENTCORE_QUEUE_NAME=agent-core-jobs
-AMPLIFY_REGION=ap-northeast-1
-AMPLIFY_BRANCH=prod
-
-# 認証関連（本番環境では強力なランダム文字列を使用）
-JWT_SECRET=your-production-jwt-secret-min-32-characters-long
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-SESSION_COOKIE_NAME=session
-SESSION_COOKIE_SECURE=true
-PASSWORD_RESET_EXPIRES_IN=1h
-PASSWORD_RESET_SECRET=your-production-password-reset-secret-min-32-characters-long
-```
-
-### 2.4 ブランチ別の自動デプロイ設定
-
-1. Amplify Console → **App settings** → **Branch settings**
-2. 各ブランチで自動デプロイを有効化：
-
-| ブランチ | 自動デプロイ | 環境 |
-|---------|------------|------|
-| develop | ✅ | 開発 |
-| staging | ✅ | ステージング |
-| prod | ✅ | 本番 |
-
----
-
-## 3. GitHub Actions の動作確認
-
-### 3.1 PR作成時のテスト
-
-1. `feature/test-ci` ブランチを作成
-2. 適当な変更をコミット
-3. `develop` へのPRを作成
-4. GitHub Actions が自動実行されることを確認：
-   - ✅ lint
-   - ✅ unit-test
-   - ✅ integration-test
-   - ✅ build
-
-### 3.2 E2Eテストの確認
-
-1. `develop` から `staging` へのPRを作成
-2. GitHub Actions で E2E テストが実行されることを確認：
-   - ✅ lint
-   - ✅ unit-test
-   - ✅ integration-test
-   - ✅ build
-   - ✅ e2e-test
-
-### 3.3 デプロイ通知の確認
-
-1. `develop` ブランチにマージ
-2. Slack に通知が届くことを確認（Slack Webhook設定済みの場合）
-
----
-
 ## 4. Slack 通知の設定（オプション）
 
 ### 4.1 Incoming Webhook の作成
@@ -251,22 +21,50 @@ SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 ## 5. Codecov の設定（オプション）
 
-### 5.1 Codecov アカウント作成
+### 5.1 アカウント作成とリポジトリ登録
 
-1. [Codecov](https://codecov.io/) にアクセス
-2. GitHub アカウントでサインイン
-3. リポジトリを追加
+1. [Codecov](https://codecov.io/) に GitHub アカウントでサインイン
+2. 「Add new repository」で当該リポジトリを選択
 
-### 5.2 トークンの取得
+### 5.2 アップロードトークン取得
 
-1. Codecov → リポジトリ選択 → **Settings** → **General**
+1. Codecov → 対象リポジトリ → **Settings** → **General**
 2. **Repository Upload Token** をコピー
 
-### 5.3 GitHub Secrets に追加
+### 5.3 GitHub Actions Secret 登録
 
-```bash
-CODECOV_TOKEN=your-codecov-token
+1. GitHub → Settings → Secrets and variables → Actions
+2. `CODECOV_TOKEN` を作成し、上記トークンを貼り付け
+
+### 5.4 カバレッジレポートの出力（Vitest）
+
+1. 依存関係: `@vitest/coverage-v8` を追加済み（なければ `pnpm add -D @vitest/coverage-v8 --filter @ai-agent/web`）
+2. カバレッジ実行（ワークスペースルートで実行可）:
+   ```bash
+   pnpm --filter @ai-agent/web test:coverage
+   ```
+3. 出力ファイル: `apps/web/coverage/coverage-final.json` が生成されることを確認
+
+### 5.5 GitHub Actions への組み込み
+
+- `/.github/workflows/pr-test.yml` の Codecov ステップをトークン付きで設定（ファイルパスは上記出力先に合わせる）
+- `token: ${{ secrets.CODECOV_TOKEN }}`も追加する
+
+```yaml
+- name: Upload coverage
+  uses: codecov/codecov-action@v3
+  if: always()
+  with:
+    files: ./apps/web/coverage/coverage-final.json
+    flags: unittests
+    name: codecov-umbrella
+    token: ${{ secrets.CODECOV_TOKEN }}
 ```
+
+### 5.6 動作確認
+
+- PR を作成し CI が走るブランチ（例: develop / staging / prod）で実行
+- Codecov ダッシュボードや PR コメントにカバレッジが反映されることを確認
 
 ### 5.4 カバレッジバッジの追加
 
@@ -274,6 +72,24 @@ CODECOV_TOKEN=your-codecov-token
 
 ```markdown
 [![codecov](https://codecov.io/gh/your-org/your-repo/branch/prod/graph/badge.svg)](https://codecov.io/gh/your-org/your-repo)
+```
+
+例 README.md
+
+```markdown
+# カバレッジ
+
+## 開発
+
+[![codecov](https://codecov.io/gh/yutakoseki/ai-agent/branch/develop/graph/badge.svg)](https://codecov.io/gh/yutakoseki/ai-agent)
+
+## ステージング
+
+[![codecov](https://codecov.io/gh/yutakoseki/ai-agent/branch/staging/graph/badge.svg)](https://codecov.io/gh/yutakoseki/ai-agent)
+
+## 本番
+
+[![codecov](https://codecov.io/gh/yutakoseki/ai-agent/branch/prod/graph/badge.svg)](https://codecov.io/gh/yutakoseki/ai-agent)
 ```
 
 ---

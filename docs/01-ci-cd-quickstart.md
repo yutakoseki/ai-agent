@@ -261,6 +261,19 @@ git push origin develop
 
 `amplify.yml` が自動検出されることを確認
 
+### 6.2.1 SSR（Web Compute）への切り替え【重要】
+
+Next.js をバックエンド（API Routes/SSR）として使う場合、Amplify が **静的ホスティング（WEB）** のままだとトップページが **404** になります。必ず **SSR（WEB_COMPUTE）** に切り替えてください。
+
+**手順（コンソール）**:
+1. Amplify Console → 対象アプリ → **App settings** → **General**
+2. **Platform** を `WEB_COMPUTE` に変更
+3. **Hosting** → **Rewrites and redirects** で SPA ルール（`/<*> → /index.html (404-200)`）がある場合は削除
+4. 再デプロイ
+
+**補足**:
+- `output: "export"` を使った静的ホスティングにする場合は、API Routes は利用できません
+
 ### 6.3 環境変数設定
 
 **Advanced settings** で以下を追加：

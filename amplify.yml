@@ -11,9 +11,13 @@ applications:
           commands:
             - pnpm build
       artifacts:
-        baseDirectory: .next
+        baseDirectory: .
         files:
-          - "**/*"
+          - .next/**/*
+          - node_modules/**/*
+          - package.json
+          - next.config.js
+          - public/**/*
       cache:
         paths:
           - node_modules/**/*
