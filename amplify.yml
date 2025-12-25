@@ -13,6 +13,7 @@ applications:
             - mkdir -p .next/standalone/.next
             - cp -R .next/static .next/standalone/.next/static
             - if [ -d public ]; then cp -R public .next/standalone/public; fi
+            - cp .next/required-server-files.json .next/standalone/required-server-files.json
       artifacts:
         baseDirectory: .next/standalone
         files:
