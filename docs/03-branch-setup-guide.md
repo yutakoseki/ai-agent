@@ -70,6 +70,7 @@ GitHub上でブランチを保護します。
 1. GitHub リポジトリを開く
 2. **Settings** タブをクリック
 3. 左メニューから **Branches** をクリック
+4. ルールセットを使うUIの場合は、Enforcement status を **Active** にし、Target branches に対象ブランチ（例: `prod` / `staging` / `develop`）を必ず指定する
 
 ### 2.2 `prod` ブランチの保護設定
 
