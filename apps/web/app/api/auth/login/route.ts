@@ -1,8 +1,8 @@
 // ログインAPI
 
 import { NextRequest, NextResponse } from "next/server";
-import type { LoginRequest, LoginResponse } from "@types/auth";
-import { AppError } from "@types/error";
+import type { LoginRequest, LoginResponse } from "@shared/auth";
+import { AppError } from "@shared/error";
 import { verifyPassword } from "@/lib/auth/password";
 import { createAccessToken, createRefreshToken } from "@/lib/auth/jwt";
 import { setSessionCookie } from "@/lib/auth/session";

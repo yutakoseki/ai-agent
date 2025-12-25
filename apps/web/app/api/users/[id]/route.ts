@@ -1,8 +1,8 @@
 // ユーザー詳細取得・更新API
 
 import { NextRequest, NextResponse } from "next/server";
-import type { UpdateUserRequest } from "@types/user";
-import { AppError } from "@types/error";
+import type { UpdateUserRequest } from "@shared/user";
+import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 

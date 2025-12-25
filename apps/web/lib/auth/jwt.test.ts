@@ -7,7 +7,7 @@ import {
   verifyAccessToken,
   verifyRefreshToken,
 } from "./jwt";
-import type { Session } from "@types/auth";
+import type { Session } from "@shared/auth";
 
 describe("JWT utilities", () => {
   let mockSession: Session;

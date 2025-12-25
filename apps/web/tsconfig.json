@@ -5,7 +5,7 @@
     "paths": {
       "@/*": ["./*"],
       "@config/*": ["../../packages/config/src/*"],
-      "@types/*": ["../../packages/types/src/*"]
+      "@shared/*": ["../../packages/types/src/*"]
     },
     "incremental": true,
     "isolatedModules": true,

@@ -1,8 +1,8 @@
 // テナント詳細取得・更新API
 
 import { NextRequest, NextResponse } from "next/server";
-import type { UpdateTenantRequest } from "@types/tenant";
-import { AppError } from "@types/error";
+import type { UpdateTenantRequest } from "@shared/tenant";
+import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 

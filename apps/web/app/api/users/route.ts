@@ -1,8 +1,8 @@
 // ユーザー一覧取得・作成API
 
 import { NextRequest, NextResponse } from "next/server";
-import type { CreateUserRequest, UserListResponse } from "@types/user";
-import { AppError } from "@types/error";
+import type { CreateUserRequest, UserListResponse } from "@shared/user";
+import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";

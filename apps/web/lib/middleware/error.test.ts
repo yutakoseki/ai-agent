@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from "vitest";
 import { handleError } from "./error";
-import { AppError } from "@types/error";
+import { AppError } from "@shared/error";
 
 describe("error handling", () => {
   describe("handleError", () => {

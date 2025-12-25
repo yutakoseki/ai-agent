@@ -1,8 +1,8 @@
 // トークンリフレッシュAPI
 
 import { NextRequest, NextResponse } from "next/server";
-import type { RefreshTokenRequest } from "@types/auth";
-import { AppError } from "@types/error";
+import type { RefreshTokenRequest } from "@shared/auth";
+import { AppError } from "@shared/error";
 import { verifyRefreshToken, createAccessToken } from "@/lib/auth/jwt";
 import { setSessionCookie } from "@/lib/auth/session";
 import { handleError } from "@/lib/middleware/error";

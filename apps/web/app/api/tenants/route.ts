@@ -1,8 +1,8 @@
 // テナント一覧取得・作成API
 
 import { NextRequest, NextResponse } from "next/server";
-import type { CreateTenantRequest, TenantListResponse } from "@types/tenant";
-import { AppError } from "@types/error";
+import type { CreateTenantRequest, TenantListResponse } from "@shared/tenant";
+import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { hashPassword } from "@/lib/auth/password";

@@ -1,7 +1,7 @@
 // エラーハンドリングユーティリティ
 
 import { NextResponse } from "next/server";
-import { AppError, type ApiError } from "@types/error";
+import { AppError, type ApiError } from "@shared/error";
 
 export function handleError(error: unknown, traceId?: string): NextResponse {
   console.error("[API Error]", { error, traceId });

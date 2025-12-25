@@ -1,7 +1,7 @@
 // JWT生成・検証ユーティリティ
 
 import { SignJWT, jwtVerify } from "jose";
-import type { Session } from "@types/auth";
+import type { Session } from "@shared/auth";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "fallback-secret-for-dev-only"
