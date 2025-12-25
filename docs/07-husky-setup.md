@@ -45,6 +45,12 @@ pnpm --filter @ai-agent/web type-check
 pnpm --filter @ai-agent/web test
 ```
 
+- pre-pushには実行権限が必要
+
+```bash
+chmod +x .husky/pre-push
+```
+
 ### 4. 運用メモ
 
 - ビルドなど重いチェックはCIに任せ、ローカルは lint/型 + 軽めのテストにとどめる。
