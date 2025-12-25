@@ -12,6 +12,8 @@ applications:
             - pnpm build
             - mkdir -p .next/standalone/.next
             - cp -R .next/static .next/standalone/.next/static
+            - mkdir -p .next/standalone/.next/server
+            - cp -R .next/server/. .next/standalone/.next/server
             - if [ -d public ]; then cp -R public .next/standalone/public; fi
             - cp .next/required-server-files.json .next/standalone/required-server-files.json
       artifacts:
