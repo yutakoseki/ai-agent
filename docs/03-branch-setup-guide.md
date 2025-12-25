@@ -80,13 +80,11 @@ GitHub上でブランチを保護します。
 Branch name pattern: prod
 
 ☑ Require a pull request before merging
-  ☑ Require approvals: 2
-  ☑ Dismiss stale pull request approvals when new commits are pushed
-  ☑ Require review from Code Owners
+  （一人開発のため approvals は指定しない）
 
 ☑ Require status checks to pass before merging
   ☑ Require branches to be up to date before merging
-  
+
   Status checks that are required:
   （以下は後でPRを作成した後に選択可能になります）
   - lint
@@ -107,6 +105,14 @@ Branch name pattern: prod
 
 3. **Create** をクリック
 
+#### Status checks の意味
+
+- lint: コードスタイルや軽微なバグを静的解析で検出し、品質を均一化
+- unit-test: 個々の関数・モジュールの挙動を検証し、局所的なバグを防止
+- integration-test: モジュール間の連携を確認し、実運用に近い動線で破綻がないかを検証
+- build: 依存解決・型チェック・バンドルを通してビルドが成立することを保証
+- e2e-test: UI/API を含むエンドツーエンドでユーザー視点の回帰を防止
+
 ### 2.3 `staging` ブランチの保護設定
 
 1. **Add branch protection rule** をクリック
@@ -116,12 +122,11 @@ Branch name pattern: prod
 Branch name pattern: staging
 
 ☑ Require a pull request before merging
-  ☑ Require approvals: 1
-  ☑ Dismiss stale pull request approvals when new commits are pushed
+  （一人開発のため approvals は指定しない）
 
 ☑ Require status checks to pass before merging
   ☑ Require branches to be up to date before merging
-  
+
   Status checks that are required:
   - lint
   - unit-test
@@ -143,10 +148,10 @@ Branch name pattern: staging
 Branch name pattern: develop
 
 ☑ Require a pull request before merging
-  ☑ Require approvals: 1
+  （一人開発のため approvals は指定しない）
 
 ☑ Require status checks to pass before merging
-  
+
   Status checks that are required:
   - lint
   - unit-test
@@ -268,6 +273,7 @@ PR作成後、以下が自動実行されます：
 **原因**: リポジトリの権限が不足している
 
 **解決策**:
+
 - リポジトリのオーナーまたは管理者権限が必要
 - 個人リポジトリの場合は問題なし
 
@@ -276,6 +282,7 @@ PR作成後、以下が自動実行されます：
 **原因**: まだGitHub Actionsが一度も実行されていない
 
 **解決策**:
+
 1. 先にテストPRを作成
 2. GitHub Actionsが実行される
 3. その後、ブランチ保護ルールで選択可能になる
@@ -285,6 +292,7 @@ PR作成後、以下が自動実行されます：
 **原因**: Secrets が設定されていない
 
 **解決策**:
+
 1. `docs/github-secrets-checklist.md` を確認
 2. 必要なSecretsを設定
 3. PRを再実行（Re-run jobs）
@@ -294,20 +302,24 @@ PR作成後、以下が自動実行されます：
 ## チェックリスト
 
 ### ブランチ作成
+
 - [ ] `prod` ブランチ作成・プッシュ
 - [ ] `staging` ブランチ作成・プッシュ
 - [ ] `develop` ブランチ作成・プッシュ
 
 ### ブランチ保護ルール
+
 - [ ] `prod` の保護ルール設定
 - [ ] `staging` の保護ルール設定
 - [ ] `develop` の保護ルール設定
 
 ### CODEOWNERS
+
 - [ ] `.github/CODEOWNERS` を実際のユーザー名に更新
 - [ ] 変更をコミット・プッシュ
 
 ### 動作確認
+
 - [ ] テスト用ブランチ作成
 - [ ] テストPR作成
 - [ ] GitHub Actions の実行確認
@@ -318,6 +330,7 @@ PR作成後、以下が自動実行されます：
 ## 次のステップ
 
 ブランチセットアップ完了後：
+
 1. Amplify アプリの作成
 2. 環境変数の設定
 3. 自動デプロイの確認
