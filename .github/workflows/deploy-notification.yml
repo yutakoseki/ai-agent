@@ -34,12 +34,15 @@ jobs:
       - name: Get commit info
         id: commit
         run: |
-          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          # 改行を削除してエスケープ
+          MESSAGE=$(git log -1 --pretty=%B | tr '\n' ' ' | sed 's/"/\\"/g')
+          echo "message=${MESSAGE}" >> $GITHUB_OUTPUT
           echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
           echo "sha=$(git log -1 --pretty=%h)" >> $GITHUB_OUTPUT
 
       - name: Notify Slack
-        if: always()
+        # SLACK_WEBHOOK が設定されている場合のみ実行
+        if: always() && secrets.SLACK_WEBHOOK != ''
         uses: 8398a7/action-slack@v3
         with:
           status: custom
