@@ -2,3 +2,5 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 pnpm --filter @ai-agent/web test
+pnpm --filter @ai-agent/web test:integration
+pnpm --filter @ai-agent/web build

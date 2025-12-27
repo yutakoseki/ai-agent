@@ -3,7 +3,10 @@ name: PR Tests
 on:
   pull_request:
     branches:
-      - develop
+      - staging
+      - prod
+  push:
+    branches:
       - staging
       - prod
 
