@@ -6,6 +6,8 @@ node_modules/
 .next/
 dist/
 coverage/
+playwright-report/
+test-results/
 *.tsbuildinfo
 
 # Env
@@ -24,4 +26,3 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
-

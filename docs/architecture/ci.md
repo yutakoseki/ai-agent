@@ -12,6 +12,7 @@
 - `python-lint-test`: poetry/uv install → ruff/flake8 + pytest（影響範囲可）
 - `sbom-sca`: Node/Python それぞれ sbom 生成 + 脆弱性スキャン（例: osv-scanner）
 - `terraform-plan`: 環境別 state で plan を出力、PR に結果をコメント
+- ※本リポ: `Backend & Infra Checks` で `python-lint-test` と `terraform-validate` を staging/prod の push/PR で実行
 
 ## 影響範囲の切り分け
 - Turborepo または changesets で `apps/web` / `services/agent-core` / `packages` の差分を判定。
@@ -33,4 +34,3 @@
 ## 運用メモ
 - PR 時: lint/test/sbom/terraform plan を必須。build はオプションでも可（頻度次第）。
 - prod へのマージ後: build とデプロイ（Amplify Gen2）、AgentCore コンテナビルド/プッシュをトリガ。
-

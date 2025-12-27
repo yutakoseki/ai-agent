@@ -4,3 +4,6 @@
 pnpm --filter @ai-agent/web test
 pnpm --filter @ai-agent/web test:integration
 pnpm --filter @ai-agent/web build
+ruff check services/agent-core
+pytest services/agent-core
+(cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color)

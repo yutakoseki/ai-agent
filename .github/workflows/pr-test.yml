@@ -7,6 +7,7 @@ on:
       - prod
   push:
     branches:
+      - develop
       - staging
       - prod
 
@@ -14,6 +15,7 @@ jobs:
   lint:
     name: Lint and Format Check
     runs-on: ubuntu-latest
+    if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +39,7 @@ jobs:
   unit-test:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: lint
+    # develop push ではカバレッジ計測のみを目的とするため lint なしで実行
     steps:
       - uses: actions/checkout@v4
 
@@ -79,6 +81,7 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: unit-test
+    if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
 
@@ -111,6 +114,7 @@ jobs:
     name: Build Check
     runs-on: ubuntu-latest
     needs: integration-test
+    if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
 
