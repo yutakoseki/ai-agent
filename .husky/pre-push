@@ -5,5 +5,12 @@ pnpm --filter @ai-agent/web test
 pnpm --filter @ai-agent/web test:integration
 pnpm --filter @ai-agent/web build
 ruff check services/agent-core
-pytest services/agent-core
+pytest services/agent-core || {
+  code=$?
+  if [ "$code" -ne 5 ]; then
+    exit "$code"
+  else
+    echo "pytest: no tests collected in services/agent-core (skipping)"
+  fi
+}
 (cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color)
