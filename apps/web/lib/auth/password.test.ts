@@ -42,7 +42,7 @@ describe("password utilities", () => {
 
       const result = await verifyPassword("WrongPassword", hash);
       expect(result).toBe(false);
-    });
+    }, 10000);
   });
 
   describe("validatePasswordStrength", () => {

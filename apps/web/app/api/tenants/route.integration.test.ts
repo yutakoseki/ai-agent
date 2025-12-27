@@ -3,19 +3,31 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
 import { NextRequest } from "next/server";
+import type { Session } from "@shared/auth";
+import { getSession } from "@/lib/auth/session";
 
-// セッション取得のモック
-vi.mock("@/lib/auth/session", () => ({
-  getSession: vi.fn().mockResolvedValue({
-    userId: "user-1",
-    tenantId: "tenant-1",
-    role: "Admin",
-    email: "admin@example.com",
-    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-  }),
-  setSessionCookie: vi.fn(),
-  clearSessionCookie: vi.fn(),
-}));
+// セッション取得をオートモック
+vi.mock("@/lib/auth/session");
+const mockGetSession = vi.mocked(getSession);
+
+const adminSession: Session = {
+  userId: "user-1",
+  tenantId: "tenant-1",
+  role: "Admin",
+  email: "admin@example.com",
+  expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+};
+
+const managerSession: Session = {
+  userId: "user-2",
+  tenantId: "tenant-1",
+  role: "Manager",
+  email: "manager@example.com",
+  expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+};
+
+// デフォルトはAdminセッション
+mockGetSession.mockResolvedValue(adminSession);
 
 describe("GET /api/tenants", () => {
   it("Admin権限でテナント一覧を取得できる", async () => {
@@ -49,13 +61,7 @@ describe("GET /api/tenants", () => {
 describe("GET /api/tenants - 権限チェック", () => {
   beforeEach(() => {
     // Manager権限に変更
-    vi.mocked(require("@/lib/auth/session").getSession).mockResolvedValue({
-      userId: "user-2",
-      tenantId: "tenant-1",
-      role: "Manager",
-      email: "manager@example.com",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    });
+    mockGetSession.mockResolvedValue(managerSession);
   });
 
   it("Manager権限ではテナント一覧を取得できない", async () => {
@@ -74,13 +80,7 @@ describe("GET /api/tenants - 権限チェック", () => {
 describe("POST /api/tenants", () => {
   beforeEach(() => {
     // Admin権限に戻す
-    vi.mocked(require("@/lib/auth/session").getSession).mockResolvedValue({
-      userId: "user-1",
-      tenantId: "tenant-1",
-      role: "Admin",
-      email: "admin@example.com",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    });
+    mockGetSession.mockResolvedValue(adminSession);
   });
 
   it("Admin権限でテナントを作成できる", async () => {
@@ -128,13 +128,7 @@ describe("POST /api/tenants", () => {
 
   it("Manager権限ではテナントを作成できない", async () => {
     // Manager権限に変更
-    vi.mocked(require("@/lib/auth/session").getSession).mockResolvedValue({
-      userId: "user-2",
-      tenantId: "tenant-1",
-      role: "Manager",
-      email: "manager@example.com",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    });
+    mockGetSession.mockResolvedValue(managerSession);
 
     const request = new NextRequest("http://localhost:3000/api/tenants", {
       method: "POST",
