@@ -96,6 +96,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    return handleError(error, traceId);
+    return handleError(error, traceId, "POST /api/auth/login");
   }
 }

@@ -48,7 +48,7 @@ export async function GET(
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "GET /api/users/:id");
   }
 }
 
@@ -115,7 +115,7 @@ export async function PATCH(
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "PATCH /api/users/:id");
   }
 }
 
@@ -166,6 +166,6 @@ export async function DELETE(
       { headers: { "X-Trace-Id": context.traceId } }
     );
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "DELETE /api/users/:id");
   }
 }

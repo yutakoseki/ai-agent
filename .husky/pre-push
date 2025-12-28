@@ -1,16 +1,123 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-pnpm --filter @ai-agent/web test
-pnpm --filter @ai-agent/web test:integration
-pnpm --filter @ai-agent/web build
-ruff check services/agent-core
-pytest services/agent-core || {
-  code=$?
-  if [ "$code" -ne 5 ]; then
-    exit "$code"
-  else
-    echo "pytest: no tests collected in services/agent-core (skipping)"
-  fi
+total_steps=6
+current_step=0
+total_start="$(date +%s)"
+
+step_prefix() {
+  printf "[pre-push][%s/%s]" "$current_step" "$total_steps"
 }
-(cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color)
+
+start_step() {
+  label="$1"
+  command="$2"
+  rerun="$3"
+  current_step="$((current_step + 1))"
+  prefix="$(step_prefix)"
+  printf "\n%s START %s\n" "$prefix" "$label"
+  printf "%s CMD   %s\n" "$prefix" "$command"
+  printf "%s RETRY %s\n" "$prefix" "$rerun"
+}
+
+finish_step() {
+  status="$1"
+  label="$2"
+  elapsed="$3"
+  prefix="$(step_prefix)"
+  printf "%s %s %s (%ss)\n" "$prefix" "$status" "$label" "$elapsed"
+}
+
+print_total() {
+  status="$1"
+  total_end="$(date +%s)"
+  total_elapsed="$((total_end - total_start))"
+  printf "\n[pre-push] %s total %ss\n" "$status" "$total_elapsed"
+}
+
+run_step() {
+  label="$1"
+  command="$2"
+  rerun="$3"
+  shift 3
+  start_step "$label" "$command" "$rerun"
+  start_time="$(date +%s)"
+
+  if "$@"; then
+    end_time="$(date +%s)"
+    elapsed="$((end_time - start_time))"
+    finish_step "OK   " "$label" "$elapsed"
+    return 0
+  fi
+
+  status="$?"
+  end_time="$(date +%s)"
+  elapsed="$((end_time - start_time))"
+  finish_step "NG   " "$label" "$elapsed" >&2
+  prefix="$(step_prefix)"
+  printf "%s RETRY %s\n" "$prefix" "$rerun" >&2
+  print_total "FAILED"
+  exit "$status"
+}
+
+run_pytest_step() {
+  label="$1"
+  command="$2"
+  rerun="$3"
+  start_step "$label" "$command" "$rerun"
+  start_time="$(date +%s)"
+
+  if pytest services/agent-core; then
+    end_time="$(date +%s)"
+    elapsed="$((end_time - start_time))"
+    finish_step "OK   " "$label" "$elapsed"
+    return 0
+  fi
+
+  status="$?"
+  if [ "$status" -ne 5 ]; then
+    end_time="$(date +%s)"
+    elapsed="$((end_time - start_time))"
+    finish_step "NG   " "$label" "$elapsed" >&2
+    prefix="$(step_prefix)"
+    printf "%s RETRY %s\n" "$prefix" "$rerun" >&2
+    print_total "FAILED"
+    exit "$status"
+  fi
+
+  echo "pytest: no tests collected in services/agent-core (skipping)"
+  end_time="$(date +%s)"
+  elapsed="$((end_time - start_time))"
+  finish_step "SKIP " "$label" "$elapsed"
+}
+
+run_step "Webユニットテスト: 主要なロジック/ミドルウェアの動作確認" \
+  "pnpm --filter @ai-agent/web test" \
+  "pnpm --filter @ai-agent/web test" \
+  pnpm --filter @ai-agent/web test
+
+run_step "Web統合テスト: APIルートの結合動作確認" \
+  "pnpm --filter @ai-agent/web test:integration" \
+  "pnpm --filter @ai-agent/web test:integration" \
+  pnpm --filter @ai-agent/web test:integration
+
+run_step "Webビルド: 本番ビルドと型/静的チェックの確認" \
+  "pnpm --filter @ai-agent/web build" \
+  "pnpm --filter @ai-agent/web build" \
+  pnpm --filter @ai-agent/web build
+
+run_step "Python静的解析: コード品質チェック" \
+  "ruff check services/agent-core" \
+  "ruff check services/agent-core" \
+  ruff check services/agent-core
+
+run_pytest_step "Pythonテスト: ユニットテストの実行" \
+  "pytest services/agent-core" \
+  "pytest services/agent-core"
+
+run_step "Terraform検証: フォーマットと設定の妥当性確認" \
+  "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color" \
+  "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color" \
+  sh -c "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color"
+
+print_total "DONE"

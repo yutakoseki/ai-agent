@@ -47,6 +47,7 @@
 - アプリ/フロントエンド
   - Next.js (App Router) + TypeScript。環境変数は型付きで管理し公開/非公開境界を遵守。
   - API: Route Handler/BFFでテナントIDとRBACをミドルウェア検証。
+  - API Route Handler の `handleError` はラベル付きで呼ぶ（例: `handleError(error, traceId, "POST /api/users")`。パスパラメータは `:id` 形式）。
   - 状態管理: React Server Componentsを優先しクライアントは最小限。必要に応じ軽量ストアを使用。
   - UI文言と関数コメントは日本語で簡潔に記述する。
 
@@ -110,4 +111,3 @@
 # 例外対応
 - 不明点やリスクがある場合は、推測で進めずユーザーに確認を求めること。
 - 予期しない差分や競合を検知した場合は即座に報告し、指示を仰ぐこと。
-

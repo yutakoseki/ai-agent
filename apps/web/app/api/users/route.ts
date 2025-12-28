@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "GET /api/users");
   }
 }
 
@@ -111,6 +111,6 @@ export async function POST(request: NextRequest) {
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "POST /api/users");
   }
 }
