@@ -5,6 +5,17 @@ total_steps=6
 current_step=0
 total_start="$(date +%s)"
 summary_lines=""
+color_ok=""
+color_ng=""
+color_skip=""
+color_reset=""
+
+if [ -t 1 ] || [ -t 2 ]; then
+  color_ok="$(printf '\033[32m')"
+  color_ng="$(printf '\033[31m')"
+  color_skip="$(printf '\033[33m')"
+  color_reset="$(printf '\033[0m')"
+fi
 
 step_prefix() {
   printf "[pre-push][%s/%s]" "$current_step" "$total_steps"
@@ -26,8 +37,27 @@ finish_step() {
   step_label="$2"
   step_elapsed="$3"
   prefix="$(step_prefix)"
-  printf "%s %s %s (%ss)\n" "$prefix" "$step_state" "$step_label" "$step_elapsed"
-  summary_lines="${summary_lines}$(printf "%s %s %s (%ss)\n" "$prefix" "$step_state" "$step_label" "$step_elapsed")"
+  colored_state="$step_state"
+  case "$step_state" in
+    "OK   ")
+      colored_state="${color_ok}${step_state}${color_reset}"
+      ;;
+    "NG   ")
+      colored_state="${color_ng}${step_state}${color_reset}"
+      ;;
+    "SKIP ")
+      colored_state="${color_skip}${step_state}${color_reset}"
+      ;;
+  esac
+
+  line="$(printf "%s %s %s (%ss)" "$prefix" "$colored_state" "$step_label" "$step_elapsed")"
+  printf "%s\n" "$line"
+  if [ -n "$summary_lines" ]; then
+    summary_lines="${summary_lines}
+$line"
+  else
+    summary_lines="$line"
+  fi
 }
 
 print_total() {
