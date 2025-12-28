@@ -101,6 +101,15 @@ run_pytest_step() {
   start_step "$label" "$command" "$rerun"
   start_time="$(date +%s)"
 
+  first_test="$(find services/agent-core -type f \( -name "test_*.py" -o -name "*_test.py" \) -print -quit)"
+  if [ -z "$first_test" ]; then
+    echo "pytest: no test files found in services/agent-core (skipping)"
+    end_time="$(date +%s)"
+    elapsed="$((end_time - start_time))"
+    finish_step "SKIP " "$label" "$elapsed"
+    return 0
+  fi
+
   if pytest services/agent-core; then
     end_time="$(date +%s)"
     elapsed="$((end_time - start_time))"
