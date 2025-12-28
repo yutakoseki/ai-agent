@@ -4,6 +4,7 @@
 total_steps=6
 current_step=0
 total_start="$(date +%s)"
+summary_lines=""
 
 step_prefix() {
   printf "[pre-push][%s/%s]" "$current_step" "$total_steps"
@@ -26,12 +27,15 @@ finish_step() {
   step_elapsed="$3"
   prefix="$(step_prefix)"
   printf "%s %s %s (%ss)\n" "$prefix" "$step_state" "$step_label" "$step_elapsed"
+  summary_lines="${summary_lines}$(printf "%s %s %s (%ss)\n" "$prefix" "$step_state" "$step_label" "$step_elapsed")"
 }
 
 print_total() {
   total_state="$1"
   total_end="$(date +%s)"
   total_elapsed="$((total_end - total_start))"
+  printf "\n[pre-push] Summary\n"
+  printf "%s" "$summary_lines"
   printf "\n[pre-push] %s total %ss\n" "$total_state" "$total_elapsed"
 }
 
