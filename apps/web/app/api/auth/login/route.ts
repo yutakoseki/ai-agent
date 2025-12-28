@@ -17,7 +17,8 @@ const MOCK_USER = {
   email: "admin@example.com",
   role: "Admin" as const,
   name: "管理者",
-  passwordHash: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIr.Kqb9Ry", // password: Test1234
+  // password: Test1234
+  passwordHash: "$2b$12$f1rxQ0wpDLldae4uHS7SduS2uaXkXPoNLjvYQETRfp1cv34XAmBES",
   createdAt: new Date(),
   updatedAt: new Date(),
 };

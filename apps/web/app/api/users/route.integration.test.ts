@@ -3,19 +3,31 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
 import { NextRequest } from "next/server";
+import type { Session } from "@shared/auth";
+import { getSession } from "@/lib/auth/session";
 
 // セッション取得のモック
-vi.mock("@/lib/auth/session", () => ({
-  getSession: vi.fn().mockResolvedValue({
-    userId: "user-1",
-    tenantId: "tenant-1",
-    role: "Admin",
-    email: "admin@example.com",
-    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-  }),
-  setSessionCookie: vi.fn(),
-  clearSessionCookie: vi.fn(),
-}));
+vi.mock("@/lib/auth/session");
+const mockGetSession = vi.mocked(getSession);
+
+const adminSession: Session = {
+  userId: "user-1",
+  tenantId: "tenant-1",
+  role: "Admin",
+  email: "admin@example.com",
+  expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+};
+
+const managerSession: Session = {
+  userId: "user-2",
+  tenantId: "tenant-1",
+  role: "Manager",
+  email: "manager@example.com",
+  expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+};
+
+// デフォルトはAdmin
+mockGetSession.mockResolvedValue(adminSession);
 
 describe("GET /api/users", () => {
   it("認証済みユーザーはユーザー一覧を取得できる", async () => {
@@ -113,13 +125,7 @@ describe("POST /api/users", () => {
 describe("POST /api/users - Manager権限", () => {
   beforeEach(() => {
     // Managerセッションに変更
-    vi.mocked(require("@/lib/auth/session").getSession).mockResolvedValue({
-      userId: "user-2",
-      tenantId: "tenant-1",
-      role: "Manager",
-      email: "manager@example.com",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    });
+    mockGetSession.mockResolvedValue(managerSession);
   });
 
   it("ManagerはMemberを作成できる", async () => {
