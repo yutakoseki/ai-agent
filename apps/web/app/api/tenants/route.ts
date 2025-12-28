@@ -5,6 +5,7 @@ import type { CreateTenantRequest, TenantListResponse } from "@shared/tenant";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
+import { requireCsrf } from "@/lib/middleware/csrf";
 import { hashPassword } from "@/lib/auth/password";
 import { listTenants, createTenant } from "@/lib/repos/tenantRepo";
 import { createUser } from "@/lib/repos/userRepo";
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     // Admin権限チェック
     const roleError = requireRole(context.session, ["Admin"], context.traceId);
     if (roleError) return roleError;

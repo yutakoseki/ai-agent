@@ -9,6 +9,12 @@
 - セッション管理: Cookie ベースを優先（Secure/HttpOnly/SameSite=Lax/Strict）。トークン保存を localStorage に置かない。
 - ローテーション: リフレッシュトークン/セッションIDのローテーションをログイン/権限昇格時に実施。
 
+## CSRF 対策（BFF + HttpOnly Cookie）
+- SameSite=Lax の Cookie を前提にし、状態変更系（POST/PUT/PATCH/DELETE）は Origin/Referer を検証する。
+- GET で状態変更しない（CSRFで悪用されるため）。
+- 同一ドメイン運用のため、CSRF トークンは当面不要とする。
+- 例外（別ドメイン運用や iframe 埋め込みなど）が発生した場合は CSRF トークンを追加する。
+
 ## RBAC
 - 役割: Admin / Manager / Member（最小）。write系エージェントは Admin/Manager のみ実行可、承認ゲートでの承認者も役割で制御。
 - ポリシー: ルート/ハンドラごとに required roles を定義し、ミドルウェアで強制。
@@ -37,4 +43,3 @@
 ## マイグレーション方針
 - RLS有効化を前提にスキーマを初期作成し、既存テーブルは `tenant_id` 追加後にポリシーを適用。
 - 既存データのテナント値が不明な場合は一括割当手順を用意し、ゼロダウンで切替。
-

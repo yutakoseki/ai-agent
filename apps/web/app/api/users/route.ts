@@ -5,6 +5,7 @@ import type { CreateUserRequest, UserListResponse } from "@shared/user";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
+import { requireCsrf } from "@/lib/middleware/csrf";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
 import { listUsers, createUser } from "@/lib/repos/userRepo";
 
@@ -34,6 +35,9 @@ export async function POST(request: NextRequest) {
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     // Admin/Manager権限チェック
     const roleError = requireRole(
       context.session,

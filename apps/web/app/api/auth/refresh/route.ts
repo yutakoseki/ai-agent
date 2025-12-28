@@ -6,6 +6,7 @@ import { AppError } from "@shared/error";
 import { verifyRefreshToken, createAccessToken } from "@/lib/auth/jwt";
 import { setSessionCookie } from "@/lib/auth/session";
 import { handleError } from "@/lib/middleware/error";
+import { requireCsrf } from "@/lib/middleware/csrf";
 import { randomUUID } from "crypto";
 
 // TODO: DB接続後に実装
@@ -18,6 +19,8 @@ const MOCK_USER = {
 
 export async function POST(request: NextRequest) {
   const traceId = randomUUID();
+  const csrfError = requireCsrf(request, traceId);
+  if (csrfError) return csrfError;
 
   try {
     const body: RefreshTokenRequest = await request.json();

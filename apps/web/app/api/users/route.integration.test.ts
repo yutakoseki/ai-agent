@@ -26,6 +26,11 @@ const managerSession: Session = {
   expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 };
 
+const headers = {
+  "Content-Type": "application/json",
+  Origin: "http://localhost:3000",
+};
+
 // デフォルトはAdmin
 mockGetSession.mockResolvedValue(adminSession);
 
@@ -66,9 +71,7 @@ describe("POST /api/users", () => {
         role: "Member",
         name: "新しいユーザー",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -88,9 +91,7 @@ describe("POST /api/users", () => {
         email: "newuser@example.com",
         // password と role が不足
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -108,9 +109,7 @@ describe("POST /api/users", () => {
         password: "weak",
         role: "Member",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -136,9 +135,7 @@ describe("POST /api/users - Manager権限", () => {
         password: "Member1234",
         role: "Member",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -154,9 +151,7 @@ describe("POST /api/users - Manager権限", () => {
         password: "Admin1234",
         role: "Admin",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);

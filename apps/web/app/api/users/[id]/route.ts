@@ -5,6 +5,7 @@ import type { UpdateUserRequest } from "@shared/user";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
+import { requireCsrf } from "@/lib/middleware/csrf";
 import { findUser } from "@/lib/repos/userRepo";
 
 // ユーザー詳細取得
@@ -49,6 +50,9 @@ export async function PATCH(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
     const body: UpdateUserRequest = await request.json();
 
@@ -115,6 +119,9 @@ export async function DELETE(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
 
     // Admin/Manager権限チェック

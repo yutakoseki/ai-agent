@@ -26,6 +26,11 @@ const managerSession: Session = {
   expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 };
 
+const headers = {
+  "Content-Type": "application/json",
+  Origin: "http://localhost:3000",
+};
+
 // デフォルトはAdminセッション
 mockGetSession.mockResolvedValue(adminSession);
 
@@ -92,9 +97,7 @@ describe("POST /api/tenants", () => {
         adminEmail: "newadmin@example.com",
         adminPassword: "NewAdmin1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -114,9 +117,7 @@ describe("POST /api/tenants", () => {
         name: "新しいテナント",
         // plan, adminEmail, adminPassword が不足
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -138,9 +139,7 @@ describe("POST /api/tenants", () => {
         adminEmail: "newadmin@example.com",
         adminPassword: "NewAdmin1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);

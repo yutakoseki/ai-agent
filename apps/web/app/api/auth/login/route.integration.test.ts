@@ -4,6 +4,11 @@ import { describe, it, expect } from "vitest";
 import { POST } from "./route";
 import { NextRequest } from "next/server";
 
+const headers = {
+  "Content-Type": "application/json",
+  Origin: "http://localhost:3000",
+};
+
 describe("POST /api/auth/login", () => {
   it("正しい認証情報でログイン成功", async () => {
     const request = new NextRequest("http://localhost:3000/api/auth/login", {
@@ -12,9 +17,7 @@ describe("POST /api/auth/login", () => {
         email: "admin@example.com",
         password: "Test1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -41,9 +44,7 @@ describe("POST /api/auth/login", () => {
         email: "admin@example.com",
         password: "WrongPassword",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -63,9 +64,7 @@ describe("POST /api/auth/login", () => {
         email: "nonexistent@example.com",
         password: "Test1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -82,9 +81,7 @@ describe("POST /api/auth/login", () => {
         email: "",
         password: "Test1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -101,9 +98,7 @@ describe("POST /api/auth/login", () => {
         email: "admin@example.com",
         password: "",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -120,9 +115,7 @@ describe("POST /api/auth/login", () => {
         email: "admin@example.com",
         password: "Test1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);

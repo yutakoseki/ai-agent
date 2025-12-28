@@ -5,6 +5,7 @@ import type { UpdateTenantRequest } from "@shared/tenant";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
+import { requireCsrf } from "@/lib/middleware/csrf";
 import { findTenantById } from "@/lib/repos/tenantRepo";
 
 // テナント詳細取得
@@ -47,6 +48,9 @@ export async function PATCH(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
 
     // Admin権限チェック
@@ -83,6 +87,9 @@ export async function DELETE(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
 
     // Admin権限チェック
