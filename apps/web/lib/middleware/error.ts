@@ -2,6 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { AppError, type ApiError } from "@shared/error";
+import { logger } from "@/lib/logger";
 
 export function handleError(
   error: unknown,
@@ -55,21 +56,21 @@ function logApiError(
       payload.details = error.details;
     }
 
-    console.error("[API Expected]", payload);
+    logger.warn("API expected error", payload);
     return;
   }
 
   if (error instanceof Error) {
-    console.error("[API Unexpected]", {
+    logger.error("API unexpected error", {
       ...context,
       name: error.name,
       message: error.message,
+      stack: error.stack,
     });
-    console.error(error);
     return;
   }
 
-  console.error("[API Unexpected]", { ...context, error });
+  logger.error("API unexpected error", { ...context, error });
 }
 
 function getStatusCode(code: ApiError["code"]): number {

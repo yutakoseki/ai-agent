@@ -23,6 +23,27 @@ export const envSchema = z.object({
   // パスワードリセット
   PASSWORD_RESET_EXPIRES_IN: z.string().default("1h"),
   PASSWORD_RESET_SECRET: z.string().min(32),
+
+  // ログ関連
+  LOG_LEVEL: z
+    .enum(["fatal", "error", "warn", "info", "debug", "trace"])
+    .default("info"),
+  LOG_PRETTY: z
+    .string()
+    .optional()
+    .transform((v) => v === "true")
+    .default("false"),
+  LOG_SAMPLING_DEBUG: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (v === undefined) return 1;
+      const parsed = Number.parseFloat(v);
+      if (Number.isNaN(parsed) || parsed < 0 || parsed > 1) {
+        throw new Error("LOG_SAMPLING_DEBUG must be between 0 and 1");
+      }
+      return parsed;
+    }),
 });
 
 export type Env = z.infer<typeof envSchema>;
