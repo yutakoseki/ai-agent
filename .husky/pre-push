@@ -17,6 +17,70 @@ if [ -t 1 ] || [ -t 2 ]; then
   color_reset="$(printf '\033[0m')"
 fi
 
+ensure_dir() {
+  dir="$1"
+  if [ -n "$dir" ]; then
+    mkdir -p "$dir" 2>/dev/null || true
+  fi
+}
+
+if [ -z "${PNPM_STORE_DIR:-}" ]; then
+  PNPM_STORE_DIR="$HOME/.pnpm-store"
+fi
+if [ -z "${PIP_CACHE_DIR:-}" ]; then
+  PIP_CACHE_DIR="$HOME/.cache/pip"
+fi
+if [ -z "${TF_PLUGIN_CACHE_DIR:-}" ]; then
+  TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
+fi
+
+export PNPM_STORE_DIR
+export PIP_CACHE_DIR
+export TF_PLUGIN_CACHE_DIR
+
+ensure_dir "$PNPM_STORE_DIR"
+ensure_dir "$PIP_CACHE_DIR"
+ensure_dir "$TF_PLUGIN_CACHE_DIR"
+
+run_all=0
+changed_files=""
+if git rev-parse --verify @{u} >/dev/null 2>&1; then
+  changed_files="$(git diff --name-only "@{u}...HEAD")"
+else
+  run_all=1
+  echo "[pre-push] upstream未設定のため、全ステップを実行します"
+fi
+
+has_path_changes() {
+  path_prefix="$1"
+  printf "%s\n" "$changed_files" | grep -q "^${path_prefix}"
+}
+
+run_web=0
+run_python=0
+run_terraform=0
+if [ "$run_all" -eq 1 ]; then
+  run_web=1
+  run_python=1
+  run_terraform=1
+else
+  if has_path_changes "apps/web/"; then
+    run_web=1
+  fi
+  if has_path_changes "packages/"; then
+    run_web=1
+  fi
+  if has_path_changes "config/"; then
+    run_web=1
+  fi
+  if has_path_changes "services/agent-core/"; then
+    run_python=1
+  fi
+  if has_path_changes "infra/terraform/"; then
+    run_terraform=1
+  fi
+fi
+
 step_prefix() {
   printf "[pre-push][%s/%s]" "$current_step" "$total_steps"
 }
@@ -58,6 +122,13 @@ $line"
   else
     summary_lines="$line"
   fi
+}
+
+skip_step() {
+  label="$1"
+  reason="$2"
+  current_step="$((current_step + 1))"
+  finish_step "SKIP " "${label} / ${reason}" "0"
 }
 
 print_total() {
@@ -134,33 +205,48 @@ run_pytest_step() {
   finish_step "SKIP " "$label" "$elapsed"
 }
 
-run_step "Webユニットテスト: 主要なロジック/ミドルウェアの動作確認" \
-  "pnpm --filter @ai-agent/web test" \
-  "pnpm --filter @ai-agent/web test" \
-  pnpm --filter @ai-agent/web test
+if [ "$run_web" -eq 1 ]; then
+  run_step "Webユニットテスト: 主要なロジック/ミドルウェアの動作確認" \
+    "pnpm --filter @ai-agent/web test" \
+    "pnpm --filter @ai-agent/web test" \
+    pnpm --filter @ai-agent/web test
 
-run_step "Web統合テスト: APIルートの結合動作確認" \
-  "pnpm --filter @ai-agent/web test:integration" \
-  "pnpm --filter @ai-agent/web test:integration" \
-  pnpm --filter @ai-agent/web test:integration
+  run_step "Web統合テスト: APIルートの結合動作確認" \
+    "pnpm --filter @ai-agent/web test:integration" \
+    "pnpm --filter @ai-agent/web test:integration" \
+    pnpm --filter @ai-agent/web test:integration
 
-run_step "Webビルド: 本番ビルドと型/静的チェックの確認" \
-  "pnpm --filter @ai-agent/web build" \
-  "pnpm --filter @ai-agent/web build" \
-  pnpm --filter @ai-agent/web build
+  run_step "Webビルド: 本番ビルドと型/静的チェックの確認" \
+    "pnpm --filter @ai-agent/web build" \
+    "pnpm --filter @ai-agent/web build" \
+    pnpm --filter @ai-agent/web build
+else
+  skip_step "Webユニットテスト: 主要なロジック/ミドルウェアの動作確認" "apps/web 変更なし"
+  skip_step "Web統合テスト: APIルートの結合動作確認" "apps/web 変更なし"
+  skip_step "Webビルド: 本番ビルドと型/静的チェックの確認" "apps/web 変更なし"
+fi
 
-run_step "Python静的解析: コード品質チェック" \
-  "ruff check services/agent-core" \
-  "ruff check services/agent-core" \
-  ruff check services/agent-core
+if [ "$run_python" -eq 1 ]; then
+  run_step "Python静的解析: コード品質チェック" \
+    "ruff check services/agent-core" \
+    "ruff check services/agent-core" \
+    ruff check services/agent-core
 
-run_pytest_step "Pythonテスト: ユニットテストの実行" \
-  "pytest services/agent-core" \
-  "pytest services/agent-core"
+  run_pytest_step "Pythonテスト: ユニットテストの実行" \
+    "pytest services/agent-core" \
+    "pytest services/agent-core"
+else
+  skip_step "Python静的解析: コード品質チェック" "services/agent-core 変更なし"
+  skip_step "Pythonテスト: ユニットテストの実行" "services/agent-core 変更なし"
+fi
 
-run_step "Terraform検証: フォーマットと設定の妥当性確認" \
-  "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color" \
-  "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color" \
-  sh -c "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color"
+if [ "$run_terraform" -eq 1 ]; then
+  run_step "Terraform検証: フォーマットと設定の妥当性確認" \
+    "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color" \
+    "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color" \
+    sh -c "cd infra/terraform && terraform fmt -check && terraform init -backend=false && terraform validate -no-color"
+else
+  skip_step "Terraform検証: フォーマットと設定の妥当性確認" "infra/terraform 変更なし"
+fi
 
 print_total "DONE"
