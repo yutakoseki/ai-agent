@@ -10,6 +10,12 @@ export const envSchema = z.object({
   AMPLIFY_REGION: z.string(),
   AMPLIFY_BRANCH: z.string(),
 
+  // DynamoDB
+  DYNAMODB_TABLE_NAME: z.string(),
+  DYNAMODB_ENDPOINT: z.string().url().optional(),
+  DYNAMODB_GSI1_NAME: z.string().default("GSI1"),
+  DYNAMODB_GSI2_NAME: z.string().default("GSI2"),
+
   // 認証関連
   JWT_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),

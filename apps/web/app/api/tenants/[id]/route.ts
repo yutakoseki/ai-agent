@@ -5,16 +5,7 @@ import type { UpdateTenantRequest } from "@shared/tenant";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
-
-// TODO: DB接続後に実装
-const MOCK_TENANT = {
-  id: "tenant-1",
-  name: "サンプルテナント",
-  plan: "Pro" as const,
-  enabled: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
+import { findTenantById } from "@/lib/repos/tenantRepo";
 
 // テナント詳細取得
 export async function GET(
@@ -33,9 +24,7 @@ export async function GET(
       if (tenantError) return tenantError;
     }
 
-    // TODO: DBからテナント取得
-    // const tenant = await db.tenant.findUnique({ where: { id } });
-    const tenant = id === MOCK_TENANT.id ? MOCK_TENANT : null;
+    const tenant = await findTenantById(id);
 
     if (!tenant) {
       throw new AppError("NOT_FOUND", "テナントが見つかりません");
@@ -66,14 +55,13 @@ export async function PATCH(
 
     const body: UpdateTenantRequest = await request.json();
 
-    // TODO: DBでテナント更新
-    // const tenant = await db.tenant.update({
-    //   where: { id },
-    //   data: body
-    // });
+    const existing = await findTenantById(id);
+    if (!existing) {
+      throw new AppError("NOT_FOUND", "テナントが見つかりません");
+    }
 
     const tenant = {
-      ...MOCK_TENANT,
+      ...existing,
       ...body,
       updatedAt: new Date(),
     };

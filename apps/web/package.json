@@ -17,6 +17,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-agent/db-dynamo": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cookie": "^1.1.1",
     "jose": "^6.1.3",

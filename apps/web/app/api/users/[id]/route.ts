@@ -5,17 +5,7 @@ import type { UpdateUserRequest } from "@shared/user";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
-
-// TODO: DB接続後に実装
-const MOCK_USER = {
-  id: "user-1",
-  tenantId: "tenant-1",
-  email: "admin@example.com",
-  role: "Admin" as const,
-  name: "管理者",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
+import { findUser } from "@/lib/repos/userRepo";
 
 // ユーザー詳細取得
 export async function GET(
@@ -28,9 +18,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // TODO: DBからユーザー取得
-    // const user = await db.user.findUnique({ where: { id } });
-    const user = id === MOCK_USER.id ? MOCK_USER : null;
+    const user = await findUser(context.session.tenantId, id);
 
     if (!user) {
       throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
@@ -64,8 +52,7 @@ export async function PATCH(
     const { id } = await params;
     const body: UpdateUserRequest = await request.json();
 
-    // TODO: DBからユーザー取得
-    const user = id === MOCK_USER.id ? MOCK_USER : null;
+    const user = await findUser(context.session.tenantId, id);
 
     if (!user) {
       throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
@@ -138,8 +125,7 @@ export async function DELETE(
     );
     if (roleError) return roleError;
 
-    // TODO: DBからユーザー取得
-    const user = id === MOCK_USER.id ? MOCK_USER : null;
+    const user = await findUser(context.session.tenantId, id);
 
     if (!user) {
       throw new AppError("NOT_FOUND", "ユーザーが見つかりません");

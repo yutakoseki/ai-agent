@@ -6,18 +6,7 @@ import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
-import { randomUUID } from "crypto";
-
-// TODO: DB接続後に実装
-const MOCK_USERS = [
-  {
-    id: "user-1",
-    email: "admin@example.com",
-    role: "Admin" as const,
-    name: "管理者",
-    createdAt: new Date(),
-  },
-];
+import { listUsers, createUser } from "@/lib/repos/userRepo";
 
 // テナント内ユーザー一覧取得
 export async function GET(request: NextRequest) {
@@ -25,14 +14,10 @@ export async function GET(request: NextRequest) {
   if (response) return response;
 
   try {
-    // TODO: DBから自テナントのユーザー一覧取得
-    // const users = await db.user.findMany({
-    //   where: { tenantId: context.session.tenantId }
-    // });
-
+    const users = await listUsers(context.session.tenantId);
     const result: UserListResponse = {
-      users: MOCK_USERS,
-      total: MOCK_USERS.length,
+      users,
+      total: users.length,
     };
 
     return NextResponse.json(result, {
@@ -81,30 +66,9 @@ export async function POST(request: NextRequest) {
     // const existing = await db.user.findUnique({ where: { email: body.email } });
     // if (existing) throw new AppError('BAD_REQUEST', 'このメールアドレスは既に使用されています');
 
-    const userId = randomUUID();
     const passwordHash = await hashPassword(body.password);
 
-    // TODO: DBにユーザー作成
-    // const user = await db.user.create({
-    //   data: {
-    //     id: userId,
-    //     tenantId: context.session.tenantId,
-    //     email: body.email,
-    //     passwordHash,
-    //     role: body.role,
-    //     name: body.name
-    //   }
-    // });
-
-    const user = {
-      id: userId,
-      tenantId: context.session.tenantId,
-      email: body.email,
-      role: body.role,
-      name: body.name,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const user = await createUser(context.session.tenantId, body, passwordHash);
 
     return NextResponse.json(user, {
       status: 201,

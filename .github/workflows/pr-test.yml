@@ -57,6 +57,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start DynamoDB Local
+        run: docker compose -f docker-compose.dynamodb.yml up -d
+
+      - name: Seed DynamoDB Local
+        run: pnpm exec node packages/db-dynamo/scripts/seed.mjs
+        env:
+          DYNAMODB_ENDPOINT: http://localhost:8000
+          DYNAMODB_TABLE_NAME: aiagent-dev
+          AWS_REGION: ap-northeast-1
+
       - name: Run unit tests
         run: pnpm --filter @ai-agent/web test
         env:
@@ -67,6 +77,9 @@ jobs:
           SESSION_COOKIE_SECURE: false
           PASSWORD_RESET_EXPIRES_IN: 1h
           PASSWORD_RESET_SECRET: test-password-reset-secret-min-32-characters-long
+          DYNAMODB_ENDPOINT: http://localhost:8000
+          DYNAMODB_TABLE_NAME: aiagent-dev
+          AWS_REGION: ap-northeast-1
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -99,6 +112,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start DynamoDB Local
+        run: docker compose -f docker-compose.dynamodb.yml up -d
+
+      - name: Seed DynamoDB Local
+        run: pnpm exec node packages/db-dynamo/scripts/seed.mjs
+        env:
+          DYNAMODB_ENDPOINT: http://localhost:8000
+          DYNAMODB_TABLE_NAME: aiagent-dev
+          AWS_REGION: ap-northeast-1
+
       - name: Run integration tests
         run: pnpm --filter @ai-agent/web test:integration
         env:
@@ -109,6 +132,9 @@ jobs:
           SESSION_COOKIE_SECURE: false
           PASSWORD_RESET_EXPIRES_IN: 1h
           PASSWORD_RESET_SECRET: test-password-reset-secret-min-32-characters-long
+          DYNAMODB_ENDPOINT: http://localhost:8000
+          DYNAMODB_TABLE_NAME: aiagent-dev
+          AWS_REGION: ap-northeast-1
 
   build:
     name: Build Check

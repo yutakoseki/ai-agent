@@ -2,6 +2,16 @@
 
 import type { UserRole } from "./auth";
 
+export interface User {
+  id: string;
+  tenantId: string;
+  email: string;
+  role: UserRole;
+  name?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CreateUserRequest {
   email: string;
   password: string;
@@ -16,12 +26,6 @@ export interface UpdateUserRequest {
 }
 
 export interface UserListResponse {
-  users: Array<{
-    id: string;
-    email: string;
-    role: UserRole;
-    name?: string;
-    createdAt: Date;
-  }>;
+  users: Array<User>;
   total: number;
 }

@@ -1,8 +1,10 @@
 terraform {
   required_version = ">= 1.6.0"
 
-  backend "s3" {
-    # TODO: state 用のバケットと DynamoDB ロックテーブルを環境別に指定する
+  # local backend なら追加設定なしで plan 可能。
+  # 本番運用では S3 backend に切り替え、bucket / dynamodb_table を -backend-config で指定する。
+  backend "local" {
+    path = "terraform.tfstate"
   }
 
   required_providers {

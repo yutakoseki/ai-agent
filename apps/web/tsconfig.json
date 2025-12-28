@@ -5,7 +5,8 @@
     "paths": {
       "@/*": ["./*"],
       "@config/*": ["../../packages/config/src/*"],
-      "@shared/*": ["../../packages/types/src/*"]
+      "@shared/*": ["../../packages/types/src/*"],
+      "@db/*": ["../../packages/db-dynamo/src/*"]
     },
     "incremental": true,
     "isolatedModules": true,
