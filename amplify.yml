@@ -13,11 +13,16 @@ applications:
             - mkdir -p .next/standalone/apps/web/.next/static
             - cp -R .next/static/. .next/standalone/apps/web/.next/static
             - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
-            - mkdir -p .next/node_modules
-            - rm -rf .next/node_modules/next
-            - NEXT_PNPM_DIR=$(ls -d .next/standalone/node_modules/.pnpm/next@* 2>/dev/null | head -n 1)
-            - if [ -z "$NEXT_PNPM_DIR" ]; then NEXT_PNPM_DIR=$(ls -d ../../node_modules/.pnpm/next@* 2>/dev/null | head -n 1); fi
-            - if [ -n "$NEXT_PNPM_DIR" ]; then mkdir -p .next/node_modules/next && cp -R "$NEXT_PNPM_DIR/node_modules/next/." .next/node_modules/next; fi
+            - NEXT_SRC_DIR=""
+            - if [ -d node_modules/next ]; then NEXT_SRC_DIR=node_modules/next; fi
+            - if [ -z "$NEXT_SRC_DIR" ]; then NEXT_PNPM_DIR=$(ls -d .next/standalone/node_modules/.pnpm/next@* 2>/dev/null | head -n 1); fi
+            - if [ -z "$NEXT_SRC_DIR" ] && [ -z "$NEXT_PNPM_DIR" ]; then NEXT_PNPM_DIR=$(ls -d ../../node_modules/.pnpm/next@* 2>/dev/null | head -n 1); fi
+            - if [ -z "$NEXT_SRC_DIR" ] && [ -n "$NEXT_PNPM_DIR" ]; then NEXT_SRC_DIR="$NEXT_PNPM_DIR/node_modules/next"; fi
+            - if [ -z "$NEXT_SRC_DIR" ]; then echo "next package not found for Amplify runtime bundle" && exit 1; fi
+            - rm -rf .next/node_modules/next .next/standalone/node_modules/next
+            - mkdir -p .next/node_modules/next .next/standalone/node_modules/next
+            - cp -R -L "$NEXT_SRC_DIR/." .next/node_modules/next
+            - cp -R -L "$NEXT_SRC_DIR/." .next/standalone/node_modules/next
       artifacts:
         baseDirectory: .next
         files:
