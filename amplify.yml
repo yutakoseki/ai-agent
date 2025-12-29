@@ -10,14 +10,11 @@ applications:
         build:
           commands:
             - pnpm build
-            - mkdir -p .next/standalone/.next
-            - cp -R .next/static .next/standalone/.next/static
-            - mkdir -p .next/standalone/.next/server
-            - cp -R .next/server/. .next/standalone/.next/server
-            - if [ -d public ]; then cp -R public .next/standalone/public; fi
-            - cp .next/required-server-files.json .next/standalone/required-server-files.json
+            - mkdir -p .next/standalone/apps/web/.next/static
+            - cp -R .next/static/. .next/standalone/apps/web/.next/static
+            - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
       artifacts:
-        baseDirectory: .next/standalone
+        baseDirectory: .next
         files:
           - "**/*"
       cache:

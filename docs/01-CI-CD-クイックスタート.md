@@ -594,6 +594,12 @@ git push origin staging
 2. 環境変数が正しく設定されているか確認
 3. `docs/05-CI-CD-リファレンス.md` の Amplify セクションのトラブルシューティングを参照
 
+**よくあるエラー**:
+
+- `Server trace files are not found in .../.next/standalone`
+  - `amplify.yml` の `artifacts.baseDirectory` を `.next` に変更
+  - モノレポの場合は `standalone` の `apps/web/.next/static` に `static` をコピーする
+
 ---
 
 ## 次のステップ
