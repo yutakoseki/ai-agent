@@ -1,6 +1,12 @@
 import { randomUUID } from "crypto";
 import type { CreateUserRequest, User } from "@shared/user";
-import { putItem, queryByPrefix, getItem, queryGSI2 } from "@db/tenant-client";
+import {
+  putItem,
+  queryByPrefix,
+  getItem,
+  queryGSI2,
+  updateItem,
+} from "@db/tenant-client";
 import type { UserItem } from "@db/types";
 
 export async function listUsers(tenantId: string): Promise<User[]> {
@@ -56,6 +62,55 @@ export async function findUserByUserId(
   const items = await queryGSI2<UserItem>(`USER#${userId}`);
   if (items.length === 0) return null;
   return mapUser(items[0]);
+}
+
+export async function updateUser(
+  tenantId: string,
+  userId: string,
+  input: Partial<Pick<User, "email" | "role" | "name">>
+): Promise<User> {
+  const sets: string[] = [];
+  const values: Record<string, unknown> = {};
+
+  if (input.email !== undefined) {
+    sets.push("email = :email");
+    values[":email"] = input.email;
+  }
+
+  if (input.role !== undefined) {
+    sets.push("role = :role");
+    values[":role"] = input.role;
+  }
+
+  if (input.name !== undefined) {
+    sets.push("name = :name");
+    values[":name"] = input.name;
+  }
+
+  const now = new Date().toISOString();
+  sets.push("updatedAt = :updatedAt");
+  values[":updatedAt"] = now;
+
+  if (sets.length === 1) {
+    const current = await getItem<UserItem>(tenantId, `USER#${userId}`);
+    if (!current) {
+      throw new Error("User not found");
+    }
+    return mapUser(current);
+  }
+
+  await updateItem(
+    tenantId,
+    `USER#${userId}`,
+    `SET ${sets.join(", ")}`,
+    values
+  );
+
+  const updated = await getItem<UserItem>(tenantId, `USER#${userId}`);
+  if (!updated) {
+    throw new Error("User not found after update");
+  }
+  return mapUser(updated);
 }
 
 function mapUser(item: UserItem): User {

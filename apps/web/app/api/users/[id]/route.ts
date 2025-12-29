@@ -6,7 +6,7 @@ import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
-import { findUser } from "@/lib/repos/userRepo";
+import { findUser, updateUser } from "@/lib/repos/userRepo";
 
 // ユーザー詳細取得
 export async function GET(
@@ -72,6 +72,7 @@ export async function PATCH(
 
     // 権限チェック
     const isSelf = context.session.userId === id;
+    const isAdmin = context.session.role === "Admin";
     const isAdminOrManager = ["Admin", "Manager"].includes(
       context.session.role
     );
@@ -80,27 +81,30 @@ export async function PATCH(
       throw new AppError("FORBIDDEN", "他のユーザーを更新する権限がありません");
     }
 
-    // 役割変更は Admin/Manager のみ
-    if (body.role && !isAdminOrManager) {
-      throw new AppError("FORBIDDEN", "役割を変更する権限がありません");
+    // 役割変更は Admin のみ
+    if (body.role !== undefined) {
+      if (!isAdmin) {
+        throw new AppError("FORBIDDEN", "役割を変更できるのは管理者のみです");
+      }
+      if (isSelf) {
+        throw new AppError("FORBIDDEN", "自分自身の役割は変更できません");
+      }
+      if (!["Manager", "Member"].includes(body.role)) {
+        throw new AppError(
+          "BAD_REQUEST",
+          "設定できる役割は Manager または Member のみです"
+        );
+      }
+      if (user.role === "Admin") {
+        throw new AppError("FORBIDDEN", "Admin の役割はここでは変更できません");
+      }
     }
 
-    // Managerは自分より上位の役割に変更できない
-    if (body.role === "Admin" && context.session.role === "Manager") {
-      throw new AppError("FORBIDDEN", "Admin役割に変更する権限がありません");
-    }
-
-    // TODO: DBでユーザー更新
-    // const updatedUser = await db.user.update({
-    //   where: { id },
-    //   data: body
-    // });
-
-    const updatedUser = {
-      ...user,
-      ...body,
-      updatedAt: new Date(),
-    };
+    const updatedUser = await updateUser(context.session.tenantId, id, {
+      email: body.email,
+      name: body.name,
+      role: body.role,
+    });
 
     return NextResponse.json(updatedUser, {
       headers: { "X-Trace-Id": context.traceId },

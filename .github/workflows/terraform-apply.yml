@@ -1,0 +1,66 @@
+name: Terraform Plan/Apply
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - prod
+    paths:
+      - infra/terraform/**
+      - scripts/terraform/**
+  push:
+    branches:
+      - develop
+      - staging
+      - prod
+    paths:
+      - infra/terraform/**
+      - scripts/terraform/**
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Resolve environment
+        id: resolve
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            ref="${{ github.base_ref }}"
+          else
+            ref="${{ github.ref_name }}"
+          fi
+          if [[ "$ref" == "develop" ]]; then
+            echo "env=dev" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=$ref" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Terraform plan/apply
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
+          TF_PROJECT: ${{ secrets.TF_PROJECT }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          TF_AUTO_APPROVE: ${{ github.event_name == 'push' && 'true' || 'false' }}
+        run: |
+          action="plan"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            action="apply"
+          fi
+          ./scripts/terraform/provision-all.sh "${{ steps.resolve.outputs.env }}" "$action"

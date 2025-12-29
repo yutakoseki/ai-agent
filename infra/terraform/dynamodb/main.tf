@@ -1,3 +1,26 @@
+terraform {
+  required_version = ">= 1.6.0"
+
+  backend "s3" {}
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+
+variable "region" {
+  type        = string
+  description = "AWS region"
+  default     = "ap-northeast-1"
+}
+
 variable "project" {
   type        = string
   description = "Project name prefix for resources"
@@ -53,17 +76,11 @@ resource "aws_kms_key" "dynamodb" {
 resource "aws_dynamodb_table" "main" {
   name         = local.table_name
   billing_mode = var.dynamodb_billing_mode
+  read_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+  write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
 
   hash_key = "PK"
   range_key = "SK"
-
-  dynamic "provisioned_throughput" {
-    for_each = var.dynamodb_billing_mode == "PROVISIONED" ? [1] : []
-    content {
-      read_capacity  = var.dynamodb_read_capacity
-      write_capacity = var.dynamodb_write_capacity
-    }
-  }
 
   attribute {
     name = "PK"
@@ -100,14 +117,8 @@ resource "aws_dynamodb_table" "main" {
     hash_key        = "GSI1PK"
     range_key       = "GSI1SK"
     projection_type = "ALL"
-
-    dynamic "provisioned_throughput" {
-      for_each = var.dynamodb_billing_mode == "PROVISIONED" ? [1] : []
-      content {
-        read_capacity  = var.dynamodb_read_capacity
-        write_capacity = var.dynamodb_write_capacity
-      }
-    }
+    read_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+    write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
   }
 
   global_secondary_index {
@@ -115,14 +126,8 @@ resource "aws_dynamodb_table" "main" {
     hash_key        = "GSI2PK"
     range_key       = "GSI2SK"
     projection_type = "ALL"
-
-    dynamic "provisioned_throughput" {
-      for_each = var.dynamodb_billing_mode == "PROVISIONED" ? [1] : []
-      content {
-        read_capacity  = var.dynamodb_read_capacity
-        write_capacity = var.dynamodb_write_capacity
-      }
-    }
+    read_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+    write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
   }
 
   ttl {
@@ -212,3 +217,12 @@ output "amplify_role_name" {
   value = var.amplify_role_name != "" ? var.amplify_role_name : aws_iam_role.amplify_execution[0].name
 }
 
+output "dynamodb_policy_arn" {
+  value       = aws_iam_policy.dynamodb_access.arn
+  description = "DynamoDB access policy ARN"
+}
+
+output "table_name" {
+  value       = aws_dynamodb_table.main.name
+  description = "DynamoDB table name"
+}
