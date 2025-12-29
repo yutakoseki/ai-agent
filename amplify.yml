@@ -10,19 +10,33 @@ applications:
         build:
           commands:
             - pnpm build
+            # Next.js standalone 出力に static / public / next 依存を確実に同梱
             - mkdir -p .next/standalone/apps/web/.next/static
             - cp -R .next/static/. .next/standalone/apps/web/.next/static
             - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
-            - NEXT_SRC_DIR=""
-            - if [ -d node_modules/next ]; then NEXT_SRC_DIR=node_modules/next; fi
-            - if [ -z "$NEXT_SRC_DIR" ]; then NEXT_PNPM_DIR=$(ls -d .next/standalone/node_modules/.pnpm/next@* 2>/dev/null | head -n 1); fi
-            - if [ -z "$NEXT_SRC_DIR" ] && [ -z "$NEXT_PNPM_DIR" ]; then NEXT_PNPM_DIR=$(ls -d ../../node_modules/.pnpm/next@* 2>/dev/null | head -n 1); fi
-            - if [ -z "$NEXT_SRC_DIR" ] && [ -n "$NEXT_PNPM_DIR" ]; then NEXT_SRC_DIR="$NEXT_PNPM_DIR/node_modules/next"; fi
-            - if [ -z "$NEXT_SRC_DIR" ]; then echo "next package not found for Amplify runtime bundle" && exit 1; fi
-            - rm -rf .next/node_modules/next .next/standalone/node_modules/next
-            - mkdir -p .next/node_modules/next .next/standalone/node_modules/next
-            - cp -R -L "$NEXT_SRC_DIR/." .next/node_modules/next
-            - cp -R -L "$NEXT_SRC_DIR/." .next/standalone/node_modules/next
+            # pnpm の nodeLinker 設定に依存せず next の実体を特定
+            - |
+              set -e
+              NEXT_SRC_DIR=""
+              for CANDIDATE in \
+                "node_modules/next" \
+                ".next/standalone/node_modules/.pnpm/next@*/node_modules/next" \
+                "../../node_modules/.pnpm/next@*/node_modules/next"; do
+                MATCHED=$(ls -d $CANDIDATE 2>/dev/null | head -n 1 || true)
+                if [ -n "$MATCHED" ]; then
+                  NEXT_SRC_DIR="$MATCHED"
+                  break
+                fi
+              done
+              if [ -z "$NEXT_SRC_DIR" ]; then
+                echo "next package not found for Amplify runtime bundle" && exit 1
+              fi
+              # Amplify ランタイムが参照する複数の node_modules に next を展開
+              rm -rf .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
+              mkdir -p .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
+              cp -R -L "$NEXT_SRC_DIR/." .next/node_modules/next
+              cp -R -L "$NEXT_SRC_DIR/." .next/standalone/node_modules/next
+              cp -R -L "$NEXT_SRC_DIR/." .next/standalone/apps/web/node_modules/next
       artifacts:
         baseDirectory: .next
         files:
