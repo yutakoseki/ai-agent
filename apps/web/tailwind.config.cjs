@@ -42,7 +42,7 @@ const hexToRgb = (value) => {
   return `${red}, ${green}, ${blue}`;
 };
 
-const withAlphaVar = (name) => `rgb(var(--color-${name}) / <alpha-value>)`;
+const withAlphaVar = (name) => `rgba(var(--color-${name}), <alpha-value>)`;
 
 const semanticColors = {
   primary: {
