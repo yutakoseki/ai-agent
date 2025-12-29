@@ -10,10 +10,15 @@ applications:
         build:
           commands:
             - pnpm build
-            # Next.js standalone 出力に static / public / next 依存を確実に同梱
+            # Next.js standalone 出力に必要なファイルを確実に同梱
             - mkdir -p .next/standalone/apps/web/.next/static
             - cp -R .next/static/. .next/standalone/apps/web/.next/static
             - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
+            # Amplify が必要とする required-server-files.json を正しい場所に配置
+            - mkdir -p .next/standalone/.next
+            - cp .next/required-server-files.json .next/standalone/.next/required-server-files.json
+            - cp .next/routes-manifest.json .next/standalone/.next/routes-manifest.json 2>/dev/null || true
+            - cp -R .next/server .next/standalone/.next/server 2>/dev/null || true
             # pnpm の nodeLinker 設定に依存せず next の実体を特定
             - |
               set -e
