@@ -19,36 +19,8 @@ applications:
             - cp .next/required-server-files.json .next/standalone/.next/required-server-files.json
             - cp .next/routes-manifest.json .next/standalone/.next/routes-manifest.json 2>/dev/null || true
             - cp -R .next/server .next/standalone/.next/server 2>/dev/null || true
-            # pnpm の nodeLinker 設定に依存せず next の実体を特定
-            - |
-              set -e
-              NEXT_SRC_DIR=""
-              for CANDIDATE in \
-                "node_modules/next" \
-                ".next/standalone/node_modules/.pnpm/next@*/node_modules/next" \
-                "../../node_modules/.pnpm/next@*/node_modules/next"; do
-                MATCHED=$(ls -d $CANDIDATE 2>/dev/null | head -n 1 || true)
-                if [ -n "$MATCHED" ]; then
-                  NEXT_SRC_DIR="$MATCHED"
-                  break
-                fi
-              done
-              if [ -z "$NEXT_SRC_DIR" ]; then
-                echo "next package not found for Amplify runtime bundle" && exit 1
-              fi
-              # 一旦一時フォルダに実体をコピーし、そこから各場所に配布する
-              TEMP_NEXT="/tmp/next_bundle"
-              rm -rf "$TEMP_NEXT"
-              cp -R -L "$NEXT_SRC_DIR/." "$TEMP_NEXT"
-              for DEST in \
-                "node_modules/next" \
-                ".next/node_modules/next" \
-                ".next/standalone/node_modules/next" \
-                ".next/standalone/apps/web/node_modules/next"; do
-                rm -rf "$DEST"
-                mkdir -p "$DEST"
-                cp -R "$TEMP_NEXT/." "$DEST"
-              done
+            # pnpm hoisted モードでの依存関係の解決を助けるためのシンボリックリンク作成
+            - if [ ! -d node_modules/next ] && [ -d ../../node_modules/next ]; then mkdir -p node_modules && ln -s ../../../node_modules/next node_modules/next; fi
       artifacts:
         baseDirectory: .next/standalone
         files:
