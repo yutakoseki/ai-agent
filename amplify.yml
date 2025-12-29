@@ -31,13 +31,19 @@ applications:
               if [ -z "$NEXT_SRC_DIR" ]; then
                 echo "next package not found for Amplify runtime bundle" && exit 1
               fi
-              # Amplify ランタイムが参照する複数の node_modules に next を展開
-              rm -rf node_modules/next .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
-              mkdir -p node_modules/next .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
-              cp -R -L "$NEXT_SRC_DIR/." node_modules/next
-              cp -R -L "$NEXT_SRC_DIR/." .next/node_modules/next
-              cp -R -L "$NEXT_SRC_DIR/." .next/standalone/node_modules/next
-              cp -R -L "$NEXT_SRC_DIR/." .next/standalone/apps/web/node_modules/next
+              # 一旦一時フォルダに実体をコピーし、そこから各場所に配布する
+              TEMP_NEXT="/tmp/next_bundle"
+              rm -rf "$TEMP_NEXT"
+              cp -R -L "$NEXT_SRC_DIR/." "$TEMP_NEXT"
+              for DEST in \
+                "node_modules/next" \
+                ".next/node_modules/next" \
+                ".next/standalone/node_modules/next" \
+                ".next/standalone/apps/web/node_modules/next"; do
+                rm -rf "$DEST"
+                mkdir -p "$DEST"
+                cp -R "$TEMP_NEXT/." "$DEST"
+              done
       artifacts:
         baseDirectory: .
         files:
