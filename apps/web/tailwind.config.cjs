@@ -5,9 +5,9 @@ const palette = {
     dark: '#18b38a',
   },
   secondary: {
-    DEFAULT: '#0f141d',
-    light: '#151c2b',
-    dark: '#0a0e16',
+    DEFAULT: '#0b0b0b',
+    light: '#151515',
+    dark: '#050505',
   },
   accent: {
     DEFAULT: '#ff7a59',
@@ -15,13 +15,13 @@ const palette = {
     dark: '#d35a3b',
   },
   surface: {
-    DEFAULT: '#141c2b',
-    raised: '#1b2435',
+    DEFAULT: '#141414',
+    raised: '#1f1f1f',
   },
   ink: {
-    DEFAULT: '#eef3fb',
-    muted: '#c2cddd',
-    soft: '#95a3ba',
+    DEFAULT: '#f4f4f4',
+    muted: '#c4c4c4',
+    soft: '#8c8c8c',
   },
 };
 
