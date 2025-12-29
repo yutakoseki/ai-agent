@@ -10,17 +10,15 @@ applications:
         build:
           commands:
             - pnpm build
-            # Next.js standalone 出力に必要なファイルを確実に同梱
-            - mkdir -p .next/standalone/apps/web/.next/static
-            - cp -R .next/static/. .next/standalone/apps/web/.next/static
-            - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
-            # Amplify が必要とする required-server-files.json を正しい場所に配置
-            - mkdir -p .next/standalone/.next
-            - cp .next/required-server-files.json .next/standalone/.next/required-server-files.json
-            - cp .next/routes-manifest.json .next/standalone/.next/routes-manifest.json 2>/dev/null || true
-            - cp -R .next/server .next/standalone/.next/server 2>/dev/null || true
-            # pnpm hoisted モードでの依存関係の解決を助けるためのシンボリックリンク作成
-            - if [ ! -d node_modules/next ] && [ -d ../../node_modules/next ]; then mkdir -p node_modules && ln -s ../../../node_modules/next node_modules/next; fi
+            # standalone の出力をモノレポ階層から引き上げてフラット化する
+            - cp -rn .next/standalone/apps/web/. .next/standalone/
+            - rm -rf .next/standalone/apps
+            # static と public を standalone 側の適切な場所に配置
+            - mkdir -p .next/standalone/.next/static
+            - cp -R .next/static/. .next/standalone/.next/static
+            - if [ -d public ]; then mkdir -p .next/standalone/public && cp -R public/. .next/standalone/public; fi
+            # required-server-files.json が確実に .next/standalone/.next/ にある状態にする
+            - if [ ! -f .next/standalone/.next/required-server-files.json ]; then mkdir -p .next/standalone/.next && cp .next/required-server-files.json .next/standalone/.next/; fi
       artifacts:
         baseDirectory: .next/standalone
         files:
