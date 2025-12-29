@@ -121,6 +121,38 @@ AWS_REGION=ap-northeast-1 \
 ./scripts/terraform/provision-all.sh dev apply
 ```
 
+### 初期テナント/管理者の投入（各環境で最初の 1 回だけ）
+
+自己登録は無効のため、**初期 Admin は手動で作成**します。
+
+1. Cognito で管理者ユーザーを作成
+2. `sub` を取得
+3. DynamoDB に **テナント + 管理者ユーザー** を投入
+
+```bash
+SEED_TENANT_ID=tenant-1 \
+SEED_ADMIN_SUB=<cognito-sub> \
+SEED_ADMIN_EMAIL=admin@example.com \
+DYNAMODB_ENDPOINT=https://dynamodb.ap-northeast-1.amazonaws.com \
+DYNAMODB_TABLE_NAME=aiagent-dev \
+AWS_REGION=ap-northeast-1 \
+pnpm exec node packages/db-dynamo/scripts/seed.mjs
+```
+
+#### 管理者の永久パスワード設定（必須）
+
+コンソールで作成したユーザーは `FORCE_CHANGE_PASSWORD` になるため、CLI で永久パスワードにします。
+
+```bash
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <user-pool-id> \
+  --username <email> \
+  --password '<new-password>' \
+  --permanent
+```
+
+※ `staging`/`prod` は `DYNAMODB_TABLE_NAME` を `aiagent-staging` / `aiagent-prod` に変更し、それぞれの Cognito ユーザー `sub` を使用します。
+
 **運用メモ（通常は手動実行不要）**
 
 - 通常の IaC 反映は GitHub Actions に任せる。`infra/terraform/**` か `scripts/terraform/**` に差分がある場合のみトリガー。

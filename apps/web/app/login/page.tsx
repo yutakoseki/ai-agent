@@ -2,6 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Noto_Sans_JP, Zen_Kaku_Gothic_New } from 'next/font/google';
 
 import { Button } from '@/components/ui/Button';
@@ -23,6 +24,7 @@ const headingFont = Zen_Kaku_Gothic_New({
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState<Status>('idle');
@@ -70,6 +72,9 @@ export default function LoginPage() {
 
       setStatus('success');
       setMessage('ログインに成功しました。セッションが作成されました。');
+      const role = data?.user?.role;
+      const destination = role === 'Admin' ? '/admin/roles' : '/';
+      router.replace(destination);
     } catch {
       setStatus('error');
       setMessage('通信に失敗しました。ネットワークを確認してください。');
