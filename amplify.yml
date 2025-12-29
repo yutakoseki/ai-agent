@@ -32,15 +32,17 @@ applications:
                 echo "next package not found for Amplify runtime bundle" && exit 1
               fi
               # Amplify ランタイムが参照する複数の node_modules に next を展開
-              rm -rf .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
-              mkdir -p .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
+              rm -rf node_modules/next .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
+              mkdir -p node_modules/next .next/node_modules/next .next/standalone/node_modules/next .next/standalone/apps/web/node_modules/next
+              cp -R -L "$NEXT_SRC_DIR/." node_modules/next
               cp -R -L "$NEXT_SRC_DIR/." .next/node_modules/next
               cp -R -L "$NEXT_SRC_DIR/." .next/standalone/node_modules/next
               cp -R -L "$NEXT_SRC_DIR/." .next/standalone/apps/web/node_modules/next
       artifacts:
-        baseDirectory: .next
+        baseDirectory: .
         files:
-          - "**/*"
+          - '.next/**/*'
+          - 'node_modules/next/**/*'
       cache:
         paths:
           - node_modules/**/*
