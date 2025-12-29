@@ -45,10 +45,9 @@ applications:
                 cp -R "$TEMP_NEXT/." "$DEST"
               done
       artifacts:
-        baseDirectory: .
+        baseDirectory: .next/standalone
         files:
-          - '.next/**/*'
-          - 'node_modules/next/**/*'
+          - '**/*'
       cache:
         paths:
           - node_modules/**/*
