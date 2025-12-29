@@ -10,17 +10,21 @@ applications:
         build:
           commands:
             - pnpm build
-            # standalone の出力をモノレポ階層から引き上げてフラット化する
-            - cp -rn .next/standalone/apps/web/. .next/standalone/
-            - rm -rf .next/standalone/apps
-            # static と public を standalone 側の適切な場所に配置
-            - mkdir -p .next/standalone/.next/static
-            - cp -R .next/static/. .next/standalone/.next/static
-            - if [ -d public ]; then mkdir -p .next/standalone/public && cp -R public/. .next/standalone/public; fi
-            # required-server-files.json が確実に .next/standalone/.next/ にある状態にする
-            - if [ ! -f .next/standalone/.next/required-server-files.json ]; then mkdir -p .next/standalone/.next && cp .next/required-server-files.json .next/standalone/.next/; fi
+            # --- Amplify Hosting の検知ロジックをパスするための構造変換 ---
+            # 1. standalone の中身（サーバー実行ファイル）をアプリのルートに引き出す
+            - cp -r .next/standalone/apps/web/. .
+            # 2. 既存の巨大な node_modules を消し、standalone 用の最小限の node_modules に差し替える
+            # これにより「next が見つからない」エラーも確実に回避
+            - rm -rf node_modules
+            - cp -r .next/standalone/node_modules .
+            # 3. static 資材を .next/static に配置（Next.js standalone の仕様）
+            - mkdir -p .next/static
+            - cp -r .next/static/. .next/static/
+            # 4. 不要になったディレクトリを削除してクリーンアップ
+            - rm -rf .next/standalone
       artifacts:
-        baseDirectory: .next/standalone
+        # baseDirectory を . (appRoot) に設定し、ルートに全て揃った状態で配布
+        baseDirectory: .
         files:
           - '**/*'
       cache:
