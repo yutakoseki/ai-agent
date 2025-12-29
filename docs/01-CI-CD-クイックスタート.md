@@ -100,9 +100,11 @@ GitHub Actions による IaC 自動反映を使う場合、Cognito/DynamoDB を�
 
 ### 初回のみ（state backend 作成）
 
+※ `TF_PROJECT` は **リソースのプレフィックス**なのでサービス名をいれるといい<br>
 ※ `TF_STATE_BUCKET` は **グローバル一意**の S3 バケット名にする
 
 ```bash
+TF_PROJECT=aiagent \
 TF_STATE_BUCKET=aiagent-terraform-state \
 TF_STATE_LOCK_TABLE=aiagent-terraform-lock \
 AWS_REGION=ap-northeast-1 \

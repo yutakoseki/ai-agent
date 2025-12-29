@@ -56,6 +56,7 @@
   - UIデザイン: tailwindcss を正式採用し、`primary/secondary/accent/surface/ink` のデザイントークンを必ず使用する。直接カラーコード指定は禁止。ダーク（black/secondaryベース）に鮮やかなアクセントを置くフラットスタイルを維持する。
 
 # ログ/監査の運用ルール
+- DynamoDB: コアはシングルテーブル、ライフサイクル/スループットが大きいログは別テーブル（tenantId必須、ログ専用のTTL/GSIを設計）。
 - ログ出力は構造化 JSON を基本とし、`traceId`/`requestId`/`jobId`/`tenantId`/`userId`/`label` をフィールドで保持する。PII や秘密情報は出力せず、必要な場合はマスク/ハッシュする。
 - 監査ログは専用ロガー/ストリームに出力し、アプリログと混在させない。成功/失敗を問わず記録し、保持期間と改ざん耐性を確保する。
 - 環境変数: `LOG_LEVEL`（prod/stg は基本 `info`、dev は `debug`）、`LOG_PRETTY`（ローカルのみ true 推奨）、必要に応じ `LOG_SAMPLING_DEBUG`。監査系は `AUDIT_LOG_ENABLED` / `AUDIT_LOG_SINK` を明示する。
