@@ -600,7 +600,7 @@ git push origin staging
   - `amplify.yml` の `artifacts.baseDirectory` を `.next` に変更
   - モノレポの場合は `standalone` の `apps/web/.next/static` に `static` をコピーする
 - `The 'node_modules' folder is missing the 'next' dependency`
-  - `amplify.yml` で `.next/node_modules/next` を `standalone` 内の `next` にシンボリックリンクする
+  - `amplify.yml` で `.next/node_modules/next` に `standalone` もしくはルートの `.pnpm` から `next` をコピーする（シンボリックリンクは避ける）
 
 ---
 
