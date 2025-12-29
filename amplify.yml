@@ -10,21 +10,15 @@ applications:
         build:
           commands:
             - pnpm build
-            # --- Amplify Hosting の検知ロジックをパスするための構造変換 ---
-            # 1. standalone の中身（サーバー実行ファイル）をアプリのルートに引き出す
-            - cp -r .next/standalone/apps/web/. .
-            # 2. 既存の巨大な node_modules を消し、standalone 用の最小限の node_modules に差し替える
-            # これにより「next が見つからない」エラーも確実に回避
-            - rm -rf node_modules
-            - cp -r .next/standalone/node_modules .
-            # 3. static 資材を .next/static に配置（Next.js standalone の仕様）
-            - mkdir -p .next/static
-            - cp -r .next/static/. .next/static/
-            # 4. 不要になったディレクトリを削除してクリーンアップ
-            - rm -rf .next/standalone
+            # Next.js standalone に必要な静的ファイルを配置
+            # (Amplify の SSR 実行時に参照される)
+            - mkdir -p .next/standalone/apps/web/.next/static
+            - cp -R .next/static/. .next/standalone/apps/web/.next/static
+            - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
       artifacts:
-        # baseDirectory を . (appRoot) に設定し、ルートに全て揃った状態で配布
-        baseDirectory: .
+        # Next.js standalone(monorepo) の実体があるディレクトリを成果物ルートにする
+        # ここには server.js / .next/required-server-files.json / node_modules/next が揃う
+        baseDirectory: .next/standalone/apps/web
         files:
           - '**/*'
       cache:
