@@ -3,26 +3,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { LoginRequest, LoginResponse } from "@shared/auth";
 import { AppError } from "@shared/error";
-import { verifyPassword } from "@/lib/auth/password";
-import { createAccessToken, createRefreshToken } from "@/lib/auth/jwt";
+import { createAccessToken } from "@/lib/auth/jwt";
 import { setSessionCookie } from "@/lib/auth/session";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
+import { loginWithCognito, verifyCognitoIdToken } from "@/lib/auth/cognito";
+import { findUserByUserId } from "@/lib/repos/userRepo";
 import { randomUUID } from "crypto";
-
-// TODO: DB接続後に実装
-// 現在はモックデータで動作確認
-const MOCK_USER = {
-  id: "user-1",
-  tenantId: "tenant-1",
-  email: "admin@example.com",
-  role: "Admin" as const,
-  name: "管理者",
-  // password: Test1234
-  passwordHash: "$2b$12$f1rxQ0wpDLldae4uHS7SduS2uaXkXPoNLjvYQETRfp1cv34XAmBES",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
 
 export async function POST(request: NextRequest) {
   const traceId = randomUUID();
@@ -37,24 +24,17 @@ export async function POST(request: NextRequest) {
       throw new AppError("BAD_REQUEST", "メールアドレスとパスワードは必須です");
     }
 
-    // TODO: DBからユーザー取得
-    // const user = await db.user.findUnique({ where: { email: body.email } });
-    const user = body.email === MOCK_USER.email ? MOCK_USER : null;
-
-    if (!user) {
-      throw new AppError(
-        "UNAUTHORIZED",
-        "メールアドレスまたはパスワードが正しくありません"
-      );
+    const cognitoTokens = await loginWithCognito(body.email, body.password);
+    const idToken = cognitoTokens.idToken;
+    const payload = await verifyCognitoIdToken(idToken);
+    const userId = payload.sub;
+    if (!userId) {
+      throw new AppError("UNAUTHORIZED", "ユーザー情報が取得できません");
     }
 
-    // パスワード検証
-    const isValid = await verifyPassword(body.password, user.passwordHash);
-    if (!isValid) {
-      throw new AppError(
-        "UNAUTHORIZED",
-        "メールアドレスまたはパスワードが正しくありません"
-      );
+    const user = await findUserByUserId(userId);
+    if (!user) {
+      throw new AppError("UNAUTHORIZED", "ユーザーが見つかりません");
     }
 
     // セッション作成
@@ -68,7 +48,10 @@ export async function POST(request: NextRequest) {
 
     // トークン生成
     const accessToken = await createAccessToken(session);
-    const refreshToken = await createRefreshToken(user.id);
+    const refreshToken = cognitoTokens.refreshToken;
+    if (!refreshToken) {
+      throw new AppError("INTERNAL_ERROR", "リフレッシュトークンが取得できません");
+    }
 
     // レスポンス
     const response: LoginResponse = {

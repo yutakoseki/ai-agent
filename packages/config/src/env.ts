@@ -10,6 +10,15 @@ export const envSchema = z.object({
   AMPLIFY_REGION: z.string(),
   AMPLIFY_BRANCH: z.string(),
 
+  // Cognito
+  COGNITO_REGION: z.string(),
+  COGNITO_USER_POOL_ID: z.string(),
+  COGNITO_CLIENT_ID: z.string(),
+  COGNITO_CLIENT_SECRET: z.string().optional(),
+  COGNITO_AUTH_FLOW: z
+    .enum(["USER_PASSWORD_AUTH", "ADMIN_USER_PASSWORD_AUTH"])
+    .default("USER_PASSWORD_AUTH"),
+
   // DynamoDB
   DYNAMODB_TABLE_NAME: z.string(),
   DYNAMODB_ENDPOINT: z.string().url().optional(),

@@ -23,8 +23,14 @@ function normalizeSampling(): number {
   return parsed;
 }
 
+function normalizePretty(): boolean {
+  const raw = process.env.LOG_PRETTY;
+  return raw === "true";
+}
+
 const currentLevel = normalizeLevel();
 const debugSampling = normalizeSampling();
+const pretty = normalizePretty();
 
 function shouldLog(level: LogLevel): boolean {
   return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[currentLevel];
@@ -40,16 +46,29 @@ function sample(level: LogLevel): boolean {
 function formatPayload(
   level: LogLevel,
   msg: string,
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> = {}
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     level,
     msg,
   };
-  if (meta) {
-    payload.meta = normalizeMeta(meta);
+
+  const normalizedMeta = normalizeMeta(meta);
+
+  // よく使うコンテキストはトップレベルにフラット化
+  for (const key of ["traceId", "requestId", "jobId", "tenantId", "userId", "label", "durationMs"]) {
+    const value = normalizedMeta[key];
+    if (value !== undefined) {
+      payload[key] = value;
+      delete normalizedMeta[key];
+    }
   }
+
+  if (Object.keys(normalizedMeta).length > 0) {
+    payload.meta = normalizedMeta;
+  }
+
   return payload;
 }
 
@@ -79,15 +98,18 @@ function log(
 
   const payload = formatPayload(level, msg, meta);
 
-  if (level === "fatal" || level === "error") {
-    console.error(payload);
-    return;
+  const writer =
+    level === "fatal" || level === "error"
+      ? console.error
+      : level === "warn"
+        ? console.warn
+        : console.log;
+
+  if (pretty) {
+    writer(JSON.stringify(payload, null, 2));
+  } else {
+    writer(payload);
   }
-  if (level === "warn") {
-    console.warn(payload);
-    return;
-  }
-  console.log(payload);
 }
 
 export const logger = {

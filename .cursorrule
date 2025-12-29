@@ -53,6 +53,7 @@
   - API Route Handler の `handleError` はラベル付きで呼ぶ（例: `handleError(error, traceId, "POST /api/users")`。パスパラメータは `:id` 形式）。
   - 状態管理: React Server Componentsを優先しクライアントは最小限。必要に応じ軽量ストアを使用。
   - UI文言と関数コメントは日本語で簡潔に記述する。
+  - UIデザイン: tailwindcss を正式採用し、`primary/secondary/accent/surface/ink` のデザイントークンを必ず使用する。直接カラーコード指定は禁止。ダーク（black/secondaryベース）に鮮やかなアクセントを置くフラットスタイルを維持する。
 
 # ログ/監査の運用ルール
 - ログ出力は構造化 JSON を基本とし、`traceId`/`requestId`/`jobId`/`tenantId`/`userId`/`label` をフィールドで保持する。PII や秘密情報は出力せず、必要な場合はマスク/ハッシュする。

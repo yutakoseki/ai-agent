@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { CreateUserRequest, User } from "@shared/user";
-import { putItem, queryByPrefix, getItem } from "@db/tenant-client";
+import { putItem, queryByPrefix, getItem, queryGSI2 } from "@db/tenant-client";
 import type { UserItem } from "@db/types";
 
 export async function listUsers(tenantId: string): Promise<User[]> {
@@ -49,6 +49,14 @@ export async function findUser(
   return mapUser(item);
 }
 
+export async function findUserByUserId(
+  userId: string
+): Promise<User | null> {
+  const items = await queryGSI2<UserItem>(`USER#${userId}`);
+  if (items.length === 0) return null;
+  return mapUser(items[0]);
+}
+
 function mapUser(item: UserItem): User {
   return {
     id: item.SK.replace("USER#", ""),
@@ -60,4 +68,3 @@ function mapUser(item: UserItem): User {
     updatedAt: new Date(item.updatedAt),
   };
 }
-

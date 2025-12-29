@@ -38,6 +38,7 @@ export interface LoginResponse {
 
 export interface RefreshTokenRequest {
   refreshToken: string;
+  email?: string;
 }
 
 export interface PasswordResetRequest {

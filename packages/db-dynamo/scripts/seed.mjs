@@ -67,8 +67,11 @@ async function seed() {
 
   const now = new Date().toISOString();
 
-  const tenantId = "tenant-1";
-  const adminId = "user-1";
+  const tenantId = process.env.SEED_TENANT_ID || "tenant-1";
+  const adminSub =
+    process.env.SEED_ADMIN_SUB || process.env.COGNITO_USER_SUB || "user-1";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@example.com";
+  const adminName = process.env.SEED_ADMIN_NAME || "管理者";
 
   await doc.send(
     new PutCommand({
@@ -92,27 +95,25 @@ async function seed() {
       TableName: TABLE_NAME,
       Item: {
         PK: `TENANT#${tenantId}`,
-        SK: `USER#${adminId}`,
-        email: "admin@example.com",
+        SK: `USER#${adminSub}`,
+        email: adminEmail,
         role: "Admin",
-        name: "管理者",
-        passwordHash:
-          "$2b$12$f1rxQ0wpDLldae4uHS7SduS2uaXkXPoNLjvYQETRfp1cv34XAmBES", // "Test1234"
+        name: adminName,
         createdAt: now,
         updatedAt: now,
         GSI1PK: "USER",
         GSI1SK: now,
-        GSI2PK: `USER#${adminId}`,
+        GSI2PK: `USER#${adminSub}`,
         GSI2SK: `TENANT#${tenantId}`,
       },
     })
   );
 
   console.log("Seed data inserted.");
+  console.log(`Admin sub: ${adminSub}`);
 }
 
 seed().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-

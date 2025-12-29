@@ -3,19 +3,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { RefreshTokenRequest } from "@shared/auth";
 import { AppError } from "@shared/error";
-import { verifyRefreshToken, createAccessToken } from "@/lib/auth/jwt";
+import { createAccessToken } from "@/lib/auth/jwt";
 import { setSessionCookie } from "@/lib/auth/session";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
+import { refreshWithCognito, verifyCognitoIdToken } from "@/lib/auth/cognito";
+import { findUserByUserId } from "@/lib/repos/userRepo";
 import { randomUUID } from "crypto";
-
-// TODO: DB接続後に実装
-const MOCK_USER = {
-  id: "user-1",
-  tenantId: "tenant-1",
-  email: "admin@example.com",
-  role: "Admin" as const,
-};
 
 export async function POST(request: NextRequest) {
   const traceId = randomUUID();
@@ -29,16 +23,18 @@ export async function POST(request: NextRequest) {
       throw new AppError("BAD_REQUEST", "リフレッシュトークンは必須です");
     }
 
-    // リフレッシュトークン検証
-    const userId = await verifyRefreshToken(body.refreshToken);
+    const cognitoTokens = await refreshWithCognito(
+      body.refreshToken,
+      body.email
+    );
+    const idToken = cognitoTokens.idToken;
+    const payload = await verifyCognitoIdToken(idToken);
+    const userId = payload.sub;
     if (!userId) {
-      throw new AppError("UNAUTHORIZED", "リフレッシュトークンが無効です");
+      throw new AppError("UNAUTHORIZED", "ユーザー情報が取得できません");
     }
 
-    // TODO: DBからユーザー取得
-    // const user = await db.user.findUnique({ where: { id: userId } });
-    const user = userId === MOCK_USER.id ? MOCK_USER : null;
-
+    const user = await findUserByUserId(userId);
     if (!user) {
       throw new AppError("UNAUTHORIZED", "ユーザーが見つかりません");
     }

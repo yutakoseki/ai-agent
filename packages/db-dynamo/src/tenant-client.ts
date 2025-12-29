@@ -80,6 +80,25 @@ export async function queryGSI1<T>(
   return (res.Items as T[] | undefined) ?? [];
 }
 
+export async function queryGSI2<T>(
+  gsi2pk: string,
+  gsi2skPrefix?: string
+): Promise<T[]> {
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: GSI2_NAME,
+      KeyConditionExpression: gsi2skPrefix
+        ? "GSI2PK = :pk AND begins_with(GSI2SK, :sk)"
+        : "GSI2PK = :pk",
+      ExpressionAttributeValues: gsi2skPrefix
+        ? { ":pk": gsi2pk, ":sk": gsi2skPrefix }
+        : { ":pk": gsi2pk },
+    })
+  );
+  return (res.Items as T[] | undefined) ?? [];
+}
+
 export async function updateItem(
   tenantId: string,
   sk: string,
@@ -116,4 +135,3 @@ export const indexes = {
   GSI1_NAME,
   GSI2_NAME,
 };
-

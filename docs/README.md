@@ -137,7 +137,8 @@ docs/
 ├── アーキテクチャ
 │   └── architecture/
 │       ├── structure.md
-│       ├── auth-tenant.md
+│       ├── 認証-テナント設計.md
+│       ├── フロントエンド設計.md
 │       ├── agentcore.md
 │       ├── ci.md
 │       ├── terraform.md
