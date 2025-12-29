@@ -1,5 +1,8 @@
 import {
+  AdminCreateUserCommand,
+  AdminDeleteUserCommand,
   AdminInitiateAuthCommand,
+  AdminSetUserPasswordCommand,
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -99,6 +102,25 @@ function mapCognitoError(error: unknown, message: string): AppError {
   return new AppError("INTERNAL_ERROR", "認証に失敗しました");
 }
 
+function mapCognitoProvisionError(error: unknown): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+  if (error && typeof error === "object" && "name" in error) {
+    const name = String((error as { name?: string }).name);
+    if (name === "UsernameExistsException") {
+      return new AppError("BAD_REQUEST", "このメールアドレスは既に使用されています");
+    }
+    if (name === "InvalidPasswordException") {
+      return new AppError("BAD_REQUEST", "パスワードが要件を満たしていません");
+    }
+    if (name === "InvalidParameterException") {
+      return new AppError("BAD_REQUEST", "入力内容が正しくありません");
+    }
+  }
+  return new AppError("INTERNAL_ERROR", "ユーザー作成に失敗しました");
+}
+
 export async function loginWithCognito(
   username: string,
   password: string
@@ -152,6 +174,87 @@ export async function loginWithCognito(
     };
   } catch (error) {
     throw mapCognitoError(error, "メールアドレスまたはパスワードが正しくありません");
+  }
+}
+
+export async function createCognitoUser(
+  email: string,
+  password: string,
+  name?: string
+): Promise<{ sub: string }> {
+  const config = getConfig();
+  const client = getClient(config.region);
+  let createdUsername: string | null = null;
+
+  try {
+    const attributes = [
+      { Name: "email", Value: email },
+      { Name: "email_verified", Value: "true" },
+    ];
+    if (name) {
+      attributes.push({ Name: "name", Value: name });
+    }
+
+    const createResult = await client.send(
+      new AdminCreateUserCommand({
+        UserPoolId: config.userPoolId,
+        Username: email,
+        UserAttributes: attributes,
+        MessageAction: "SUPPRESS",
+      })
+    );
+    createdUsername = email;
+
+    const sub = createResult.User?.Attributes?.find(
+      (attribute) => attribute.Name === "sub"
+    )?.Value;
+    if (!sub) {
+      throw new AppError("INTERNAL_ERROR", "CognitoユーザーIDが取得できません");
+    }
+
+    await client.send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: config.userPoolId,
+        Username: email,
+        Password: password,
+        Permanent: true,
+      })
+    );
+
+    return { sub };
+  } catch (error) {
+    if (createdUsername) {
+      try {
+        await client.send(
+          new AdminDeleteUserCommand({
+            UserPoolId: config.userPoolId,
+            Username: createdUsername,
+          })
+        );
+      } catch {
+        // cleanup failure should not hide the original error
+      }
+    }
+    throw mapCognitoProvisionError(error);
+  }
+}
+
+export async function deleteCognitoUser(email: string): Promise<void> {
+  const config = getConfig();
+  const client = getClient(config.region);
+
+  try {
+    await client.send(
+      new AdminDeleteUserCommand({
+        UserPoolId: config.userPoolId,
+        Username: email,
+      })
+    );
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError("INTERNAL_ERROR", "Cognitoユーザー削除に失敗しました");
   }
 }
 

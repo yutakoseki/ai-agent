@@ -6,7 +6,8 @@ import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
+import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
 import { listTenants, createTenant } from "@/lib/repos/tenantRepo";
 import { createUser } from "@/lib/repos/userRepo";
 
@@ -56,20 +57,46 @@ export async function POST(request: NextRequest) {
       throw new AppError("BAD_REQUEST", "必須項目が不足しています");
     }
 
-    const passwordHash = await hashPassword(body.adminPassword);
+    const passwordCheck = validatePasswordStrength(body.adminPassword);
+    if (!passwordCheck.valid) {
+      throw new AppError("BAD_REQUEST", "パスワードが要件を満たしていません", {
+        errors: passwordCheck.errors,
+      });
+    }
 
-    const tenant = await createTenant(body);
-    await createUser(tenant.id, {
-      email: body.adminEmail,
-      password: body.adminPassword,
-      role: "Admin",
-      name: "Admin",
-    }, passwordHash);
+    const cognitoUser = await createCognitoUser(
+      body.adminEmail,
+      body.adminPassword,
+      "Admin"
+    );
 
-    return NextResponse.json(tenant, {
-      status: 201,
-      headers: { "X-Trace-Id": context.traceId },
-    });
+    try {
+      const passwordHash = await hashPassword(body.adminPassword);
+      const tenant = await createTenant(body);
+      await createUser(
+        tenant.id,
+        {
+          email: body.adminEmail,
+          password: body.adminPassword,
+          role: "Admin",
+          name: "Admin",
+        },
+        passwordHash,
+        cognitoUser.sub
+      );
+
+      return NextResponse.json(tenant, {
+        status: 201,
+        headers: { "X-Trace-Id": context.traceId },
+      });
+    } catch (error) {
+      try {
+        await deleteCognitoUser(body.adminEmail);
+      } catch {
+        // best-effort cleanup
+      }
+      throw error;
+    }
   } catch (error) {
     return handleError(error, context.traceId, "POST /api/tenants");
   }

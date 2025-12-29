@@ -11,9 +11,10 @@ export async function listUsers(tenantId: string): Promise<User[]> {
 export async function createUser(
   tenantId: string,
   input: CreateUserRequest,
-  passwordHash: string
+  passwordHash: string,
+  userId?: string
 ): Promise<User> {
-  const id = randomUUID();
+  const id = userId ?? randomUUID();
   const now = new Date().toISOString();
 
   await putItem(tenantId, `USER#${id}`, {

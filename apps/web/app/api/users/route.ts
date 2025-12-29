@@ -7,6 +7,7 @@ import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
+import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
 import { listUsers, createUser } from "@/lib/repos/userRepo";
 
 // テナント内ユーザー一覧取得
@@ -70,14 +71,33 @@ export async function POST(request: NextRequest) {
     // const existing = await db.user.findUnique({ where: { email: body.email } });
     // if (existing) throw new AppError('BAD_REQUEST', 'このメールアドレスは既に使用されています');
 
-    const passwordHash = await hashPassword(body.password);
+    const cognitoUser = await createCognitoUser(
+      body.email,
+      body.password,
+      body.name
+    );
 
-    const user = await createUser(context.session.tenantId, body, passwordHash);
+    try {
+      const passwordHash = await hashPassword(body.password);
+      const user = await createUser(
+        context.session.tenantId,
+        body,
+        passwordHash,
+        cognitoUser.sub
+      );
 
-    return NextResponse.json(user, {
-      status: 201,
-      headers: { "X-Trace-Id": context.traceId },
-    });
+      return NextResponse.json(user, {
+        status: 201,
+        headers: { "X-Trace-Id": context.traceId },
+      });
+    } catch (error) {
+      try {
+        await deleteCognitoUser(body.email);
+      } catch {
+        // best-effort cleanup
+      }
+      throw error;
+    }
   } catch (error) {
     return handleError(error, context.traceId, "POST /api/users");
   }

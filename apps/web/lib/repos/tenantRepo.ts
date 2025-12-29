@@ -9,9 +9,10 @@ export async function listTenants(): Promise<Tenant[]> {
 }
 
 export async function createTenant(
-  input: CreateTenantRequest
+  input: CreateTenantRequest,
+  tenantId?: string
 ): Promise<Tenant> {
-  const id = randomUUID();
+  const id = tenantId ?? randomUUID();
   const now = new Date().toISOString();
 
   await putItem(id, `TENANT#${id}`, {
@@ -56,4 +57,3 @@ function mapTenant(item: TenantItem): Tenant {
 function mapTenantFromGsi(item: TenantItem): Tenant {
   return mapTenant(item);
 }
-
