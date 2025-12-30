@@ -15,54 +15,21 @@ applications:
             - cp -R .next/static/. .next/standalone/.next/static
             - if [ -d public ]; then mkdir -p .next/standalone/public && cp -R public/. .next/standalone/public; fi
             # Amplify が参照する server trace / outputFileTracing 周りのファイルを確実に含める
-            - if [ -f .next/next-server.js.nft.json ]; then cp .next/next-server.js.nft.json .next/standalone/.next/next-server.js.nft.json; fi
-            - if [ -f .next/next-minimal-server.js.nft.json ]; then cp .next/next-minimal-server.js.nft.json .next/standalone/.next/next-minimal-server.js.nft.json; fi
-            - if [ -f .next/trace ]; then cp .next/trace .next/standalone/.next/trace; fi
+            - if [ -f .next/next-server.js.nft.json ]; then cp .next/next-server.js.nft.json .next/standalone/.next/next-server.js.nft.json; cp .next/next-server.js.nft.json .next/standalone/next-server.js.nft.json; fi
+            - if [ -f .next/next-minimal-server.js.nft.json ]; then cp .next/next-minimal-server.js.nft.json .next/standalone/.next/next-minimal-server.js.nft.json; cp .next/next-minimal-server.js.nft.json .next/standalone/next-minimal-server.js.nft.json; fi
+            - if [ -f .next/trace ]; then cp .next/trace .next/standalone/.next/trace; cp .next/trace .next/standalone/trace; fi
             # Amplify が required-server-files.json を baseDirectory 直下に探すケースがあるため複製しておく
             - cp .next/standalone/.next/required-server-files.json .next/standalone/required-server-files.json
             - cp .next/standalone/.next/routes-manifest.json .next/standalone/routes-manifest.json 2>/dev/null || true
-            # Amplify が "Server trace files" として server.js.nft.json を要求するケースがあるため生成しておく
-            - |
-              node - <<'NODE'
-              const fs = require('fs');
-              const path = require('path');
-              const { nodeFileTrace } = require('next/dist/compiled/@vercel/nft');
-
-              (async () => {
-                const base = path.resolve('.next/standalone');
-                const entry = path.join(base, 'server.js');
-                if (!fs.existsSync(entry)) {
-                  console.error('server.js not found at', entry);
-                  process.exit(1);
-                }
-                
-                const result = await nodeFileTrace([entry], {
-                  base,
-                  processCwd: base,
-                });
-                
-                const files = Array.from(result.fileList)
-                  .map((f) => path.relative(base, f))
-                  .filter((p) => p && p !== 'server.js.nft.json')
-                  .sort();
-                
-                fs.writeFileSync(
-                  path.join(base, 'server.js.nft.json'),
-                  JSON.stringify({ version: 1, files }, null, 2)
-                );
-                console.log('generated', path.join(base, 'server.js.nft.json'), 'files:', files.length);
-              })().catch((e) => {
-                console.error(e);
-                process.exit(1);
-              });
-              NODE
       artifacts:
         baseDirectory: .next/standalone
         files:
           # NOTE: '**/*' だけだと `.next` のようなドットディレクトリが成果物に含まれない場合があるため明示する
           - 'server.js'
-          - 'server.js.nft.json'
           - 'package.json'
+          - 'trace'
+          - 'next-server.js.nft.json'
+          - 'next-minimal-server.js.nft.json'
           - 'required-server-files.json'
           - 'routes-manifest.json'
           - 'public/**/*'
