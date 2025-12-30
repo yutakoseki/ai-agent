@@ -202,5 +202,3 @@ Terraform では `infra/terraform/dynamodb` の `dynamodb_access` ポリシー�
 - pnpmモノレポの要件（`.npmrc node-linker=hoisted`）：`https://docs.aws.amazon.com/amplify/latest/userguide/monorepo-configuration.html`
 - Next.js Compute アプリの確認手順（standalone実行や static/public の扱いの概念）：`https://docs.aws.amazon.com/amplify/latest/userguide/troubleshooting-SSR.html`
 - Amplify の Next.js サポート概要：`https://docs.aws.amazon.com/amplify/latest/userguide/ssr-amplify-support.html`
-
-
