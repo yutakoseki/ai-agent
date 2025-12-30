@@ -10,35 +10,11 @@ applications:
         build:
           commands:
             - pnpm build
-            # Next.js standalone 実行に必要な static / public を配置（AWS公式手順に準拠）
-            - mkdir -p .next/standalone/.next/static
-            - cp -R .next/static/. .next/standalone/.next/static
-            - if [ -d public ]; then mkdir -p .next/standalone/public && cp -R public/. .next/standalone/public; fi
-            # Amplify の compute bundle 生成が `.next/server` を要求するため、standalone 側へ確実にコピーする
-            - rm -rf .next/standalone/.next/server
-            - cp -R .next/server .next/standalone/.next/server
-            # Amplify が参照する server trace / outputFileTracing 周りのファイルを確実に含める
-            - if [ -f .next/next-server.js.nft.json ]; then cp .next/next-server.js.nft.json .next/standalone/.next/next-server.js.nft.json; cp .next/next-server.js.nft.json .next/standalone/next-server.js.nft.json; fi
-            - if [ -f .next/next-minimal-server.js.nft.json ]; then cp .next/next-minimal-server.js.nft.json .next/standalone/.next/next-minimal-server.js.nft.json; cp .next/next-minimal-server.js.nft.json .next/standalone/next-minimal-server.js.nft.json; fi
-            - if [ -f .next/trace ]; then cp .next/trace .next/standalone/.next/trace; cp .next/trace .next/standalone/trace; fi
-            # Amplify が required-server-files.json を baseDirectory 直下に探すケースがあるため複製しておく
-            - cp .next/standalone/.next/required-server-files.json .next/standalone/required-server-files.json
-            - cp .next/standalone/.next/routes-manifest.json .next/standalone/routes-manifest.json 2>/dev/null || true
       artifacts:
-        baseDirectory: .next/standalone
+        # Amplify の Web Compute バンドラは `.next/server` を基点に bundle を作るため、成果物ルートは `.next` に揃える
+        baseDirectory: .next
         files:
-          # NOTE: '**/*' だけだと `.next` のようなドットディレクトリが成果物に含まれない場合があるため明示する
-          - 'server.js'
-          - 'package.json'
-          - 'trace'
-          - 'next-server.js.nft.json'
-          - 'next-minimal-server.js.nft.json'
-          - 'required-server-files.json'
-          - 'routes-manifest.json'
-          - 'public/**/*'
-          - '.next/**/*'
-          - 'node_modules/**/*'
-          - 'packages/**/*'
+          - '**/*'
       cache:
         paths:
           - node_modules/**/*
