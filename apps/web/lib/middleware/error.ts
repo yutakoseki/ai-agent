@@ -1,6 +1,7 @@
 // エラーハンドリングユーティリティ
 
 import { NextResponse } from "next/server";
+import "@/lib/next-runtime-workaround";
 import { AppError, type ApiError } from "@shared/error";
 import { logger } from "@/lib/logger";
 
