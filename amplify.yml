@@ -20,8 +20,17 @@ applications:
         # ここには server.js / .next/required-server-files.json / node_modules/next が揃う
         baseDirectory: .next/standalone/apps/web
         files:
-          - '**/*'
+          # NOTE: '**/*' だけだと `.next` のようなドットディレクトリが成果物に含まれない場合があるため明示する
+          - 'server.js'
+          - 'package.json'
+          - 'public/**/*'
+          - '.next/**/*'
+          - 'node_modules/**/*'
+          - 'packages/**/*'
       cache:
         paths:
           - node_modules/**/*
           - .next/cache/**/*
+    amplifyHosting:
+      config:
+        SSR: true
