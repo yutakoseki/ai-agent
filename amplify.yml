@@ -14,6 +14,9 @@ applications:
             - mkdir -p .next/standalone/.next/static
             - cp -R .next/static/. .next/standalone/.next/static
             - if [ -d public ]; then mkdir -p .next/standalone/public && cp -R public/. .next/standalone/public; fi
+            # Amplify の compute bundle 生成が `.next/server` を要求するため、standalone 側へ確実にコピーする
+            - rm -rf .next/standalone/.next/server
+            - cp -R .next/server .next/standalone/.next/server
             # Amplify が参照する server trace / outputFileTracing 周りのファイルを確実に含める
             - if [ -f .next/next-server.js.nft.json ]; then cp .next/next-server.js.nft.json .next/standalone/.next/next-server.js.nft.json; cp .next/next-server.js.nft.json .next/standalone/next-server.js.nft.json; fi
             - if [ -f .next/next-minimal-server.js.nft.json ]; then cp .next/next-minimal-server.js.nft.json .next/standalone/.next/next-minimal-server.js.nft.json; cp .next/next-minimal-server.js.nft.json .next/standalone/next-minimal-server.js.nft.json; fi
