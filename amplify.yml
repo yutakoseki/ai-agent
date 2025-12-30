@@ -7,6 +7,13 @@ applications:
           commands:
             - corepack enable
             - pnpm install
+            - echo "COGNITO_REGION=$COGNITO_REGION" >> .env
+            - echo "COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID" >> .env
+            - echo "COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID" >> .env
+            - echo "COGNITO_AUTH_FLOW=$COGNITO_AUTH_FLOW" >> .env
+            - echo "AMPLIFY_AWS_REGION=$AMPLIFY_AWS_REGION" >> .env
+            - echo "AMPLIFY_AWS_ACCESS_KEY_ID=$AMPLIFY_AWS_ACCESS_KEY_ID" >> .env
+            - echo "AMPLIFY_AWS_SECRET_ACCESS_KEY=$AMPLIFY_AWS_SECRET_ACCESS_KEY" >> .env
         build:
           commands:
             - pnpm build

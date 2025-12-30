@@ -5,12 +5,12 @@ import {
   AdminSetUserPasswordCommand,
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
-} from "@aws-sdk/client-cognito-identity-provider";
-import { createHmac } from "crypto";
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
-import { AppError } from "@shared/error";
+} from '@aws-sdk/client-cognito-identity-provider';
+import { createHmac } from 'crypto';
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { AppError } from '@shared/error';
 
-type CognitoAuthFlow = "USER_PASSWORD_AUTH" | "ADMIN_USER_PASSWORD_AUTH";
+type CognitoAuthFlow = 'USER_PASSWORD_AUTH' | 'ADMIN_USER_PASSWORD_AUTH';
 
 type CognitoTokens = {
   idToken: string;
@@ -30,12 +30,10 @@ type CognitoConfig = {
 
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 const clientCache = new Map<string, CognitoIdentityProviderClient>();
-const ACCESS_KEY_ID =
-  process.env.AMPLIFY_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+const ACCESS_KEY_ID = process.env.AMPLIFY_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
 const SECRET_ACCESS_KEY =
   process.env.AMPLIFY_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
-const SESSION_TOKEN =
-  process.env.AMPLIFY_AWS_SESSION_TOKEN || process.env.AWS_SESSION_TOKEN;
+const SESSION_TOKEN = process.env.AMPLIFY_AWS_SESSION_TOKEN || process.env.AWS_SESSION_TOKEN;
 const AWS_CREDENTIALS =
   ACCESS_KEY_ID && SECRET_ACCESS_KEY
     ? {
@@ -50,15 +48,15 @@ function readAmplifySecret(key: string): string | undefined {
   // - When present, it may be an object or a JSON string (implementation-dependent).
   const secrets = (process.env as unknown as { secrets?: unknown }).secrets;
   if (!secrets) return undefined;
-  if (typeof secrets === "object" && secrets !== null) {
+  if (typeof secrets === 'object' && secrets !== null) {
     const value = (secrets as Record<string, unknown>)[key];
-    return typeof value === "string" ? value : undefined;
+    return typeof value === 'string' ? value : undefined;
   }
-  if (typeof secrets === "string") {
+  if (typeof secrets === 'string') {
     try {
       const parsed = JSON.parse(secrets) as Record<string, unknown>;
       const value = parsed[key];
-      return typeof value === "string" ? value : undefined;
+      return typeof value === 'string' ? value : undefined;
     } catch {
       return undefined;
     }
@@ -70,24 +68,19 @@ function getConfig(): CognitoConfig {
   const region =
     // 直接参照は Next の build-time env 埋め込みが効く（Amplifyランタイムで env が降りない場合の回避）
     process.env.COGNITO_REGION ||
-    readAmplifySecret("COGNITO_REGION") ||
+    readAmplifySecret('COGNITO_REGION') ||
     process.env.AMPLIFY_AWS_REGION ||
     process.env.AWS_REGION;
-  const userPoolId =
-    process.env.COGNITO_USER_POOL_ID || readAmplifySecret("COGNITO_USER_POOL_ID");
-  const clientId =
-    process.env.COGNITO_CLIENT_ID || readAmplifySecret("COGNITO_CLIENT_ID");
+  const userPoolId = process.env.COGNITO_USER_POOL_ID || readAmplifySecret('COGNITO_USER_POOL_ID');
+  const clientId = process.env.COGNITO_CLIENT_ID || readAmplifySecret('COGNITO_CLIENT_ID');
   const clientSecret =
-    process.env.COGNITO_CLIENT_SECRET || readAmplifySecret("COGNITO_CLIENT_SECRET") || undefined;
-  const rawAuthFlow =
-    process.env.COGNITO_AUTH_FLOW || readAmplifySecret("COGNITO_AUTH_FLOW");
+    process.env.COGNITO_CLIENT_SECRET || readAmplifySecret('COGNITO_CLIENT_SECRET') || undefined;
+  const rawAuthFlow = process.env.COGNITO_AUTH_FLOW || readAmplifySecret('COGNITO_AUTH_FLOW');
   const authFlow: CognitoAuthFlow =
-    rawAuthFlow === "ADMIN_USER_PASSWORD_AUTH"
-      ? "ADMIN_USER_PASSWORD_AUTH"
-      : "USER_PASSWORD_AUTH";
+    rawAuthFlow === 'ADMIN_USER_PASSWORD_AUTH' ? 'ADMIN_USER_PASSWORD_AUTH' : 'USER_PASSWORD_AUTH';
 
   if (!region || !userPoolId || !clientId) {
-    throw new AppError("INTERNAL_ERROR", "Cognito設定が不足しています");
+    throw new AppError('INTERNAL_ERROR', 'Cognito設定が不足しています');
   }
 
   return {
@@ -125,53 +118,45 @@ function buildSecretHash(
   clientSecret?: string
 ): string | undefined {
   if (!clientSecret || !username) return undefined;
-  return createHmac("sha256", clientSecret)
-    .update(`${username}${clientId}`)
-    .digest("base64");
+  return createHmac('sha256', clientSecret).update(`${username}${clientId}`).digest('base64');
 }
 
 function mapCognitoError(error: unknown, message: string): AppError {
   if (error instanceof AppError) {
     return error;
   }
-  if (error && typeof error === "object" && "name" in error) {
+  if (error && typeof error === 'object' && 'name' in error) {
     const name = String((error as { name?: string }).name);
-    if (
-      name === "NotAuthorizedException" ||
-      name === "UserNotFoundException"
-    ) {
-      return new AppError("UNAUTHORIZED", message);
+    if (name === 'NotAuthorizedException' || name === 'UserNotFoundException') {
+      return new AppError('UNAUTHORIZED', message);
     }
-    if (name === "PasswordResetRequiredException") {
-      return new AppError("UNAUTHORIZED", "パスワードの再設定が必要です");
+    if (name === 'PasswordResetRequiredException') {
+      return new AppError('UNAUTHORIZED', 'パスワードの再設定が必要です');
     }
   }
-  return new AppError("INTERNAL_ERROR", "認証に失敗しました");
+  return new AppError('INTERNAL_ERROR', '認証に失敗しました');
 }
 
 function mapCognitoProvisionError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
   }
-  if (error && typeof error === "object" && "name" in error) {
+  if (error && typeof error === 'object' && 'name' in error) {
     const name = String((error as { name?: string }).name);
-    if (name === "UsernameExistsException") {
-      return new AppError("BAD_REQUEST", "このメールアドレスは既に使用されています");
+    if (name === 'UsernameExistsException') {
+      return new AppError('BAD_REQUEST', 'このメールアドレスは既に使用されています');
     }
-    if (name === "InvalidPasswordException") {
-      return new AppError("BAD_REQUEST", "パスワードが要件を満たしていません");
+    if (name === 'InvalidPasswordException') {
+      return new AppError('BAD_REQUEST', 'パスワードが要件を満たしていません');
     }
-    if (name === "InvalidParameterException") {
-      return new AppError("BAD_REQUEST", "入力内容が正しくありません");
+    if (name === 'InvalidParameterException') {
+      return new AppError('BAD_REQUEST', '入力内容が正しくありません');
     }
   }
-  return new AppError("INTERNAL_ERROR", "ユーザー作成に失敗しました");
+  return new AppError('INTERNAL_ERROR', 'ユーザー作成に失敗しました');
 }
 
-export async function loginWithCognito(
-  username: string,
-  password: string
-): Promise<CognitoTokens> {
+export async function loginWithCognito(username: string, password: string): Promise<CognitoTokens> {
   const config = getConfig();
   const client = getClient(config.region);
   const secretHash = buildSecretHash(username, config.clientId, config.clientSecret);
@@ -185,7 +170,7 @@ export async function loginWithCognito(
   }
 
   try {
-    if (config.authFlow === "ADMIN_USER_PASSWORD_AUTH") {
+    if (config.authFlow === 'ADMIN_USER_PASSWORD_AUTH') {
       const command = new AdminInitiateAuthCommand({
         UserPoolId: config.userPoolId,
         ClientId: config.clientId,
@@ -194,7 +179,7 @@ export async function loginWithCognito(
       });
       const result = await client.send(command);
       if (!result.AuthenticationResult?.IdToken) {
-        throw new AppError("UNAUTHORIZED", "認証に失敗しました");
+        throw new AppError('UNAUTHORIZED', '認証に失敗しました');
       }
       return {
         idToken: result.AuthenticationResult.IdToken,
@@ -211,7 +196,7 @@ export async function loginWithCognito(
     });
     const result = await client.send(command);
     if (!result.AuthenticationResult?.IdToken) {
-      throw new AppError("UNAUTHORIZED", "認証に失敗しました");
+      throw new AppError('UNAUTHORIZED', '認証に失敗しました');
     }
     return {
       idToken: result.AuthenticationResult.IdToken,
@@ -220,7 +205,7 @@ export async function loginWithCognito(
       expiresIn: result.AuthenticationResult.ExpiresIn,
     };
   } catch (error) {
-    throw mapCognitoError(error, "メールアドレスまたはパスワードが正しくありません");
+    throw mapCognitoError(error, 'メールアドレスまたはパスワードが正しくありません');
   }
 }
 
@@ -235,11 +220,11 @@ export async function createCognitoUser(
 
   try {
     const attributes = [
-      { Name: "email", Value: email },
-      { Name: "email_verified", Value: "true" },
+      { Name: 'email', Value: email },
+      { Name: 'email_verified', Value: 'true' },
     ];
     if (name) {
-      attributes.push({ Name: "name", Value: name });
+      attributes.push({ Name: 'name', Value: name });
     }
 
     const createResult = await client.send(
@@ -247,16 +232,14 @@ export async function createCognitoUser(
         UserPoolId: config.userPoolId,
         Username: email,
         UserAttributes: attributes,
-        MessageAction: "SUPPRESS",
+        MessageAction: 'SUPPRESS',
       })
     );
     createdUsername = email;
 
-    const sub = createResult.User?.Attributes?.find(
-      (attribute) => attribute.Name === "sub"
-    )?.Value;
+    const sub = createResult.User?.Attributes?.find((attribute) => attribute.Name === 'sub')?.Value;
     if (!sub) {
-      throw new AppError("INTERNAL_ERROR", "CognitoユーザーIDが取得できません");
+      throw new AppError('INTERNAL_ERROR', 'CognitoユーザーIDが取得できません');
     }
 
     await client.send(
@@ -301,7 +284,7 @@ export async function deleteCognitoUser(email: string): Promise<void> {
     if (error instanceof AppError) {
       throw error;
     }
-    throw new AppError("INTERNAL_ERROR", "Cognitoユーザー削除に失敗しました");
+    throw new AppError('INTERNAL_ERROR', 'Cognitoユーザー削除に失敗しました');
   }
 }
 
@@ -314,7 +297,7 @@ export async function refreshWithCognito(
   const secretHash = buildSecretHash(username, config.clientId, config.clientSecret);
 
   if (config.clientSecret && !secretHash) {
-    throw new AppError("BAD_REQUEST", "メールアドレスが必要です");
+    throw new AppError('BAD_REQUEST', 'メールアドレスが必要です');
   }
 
   const authParameters: Record<string, string> = {
@@ -330,12 +313,12 @@ export async function refreshWithCognito(
   try {
     const command = new InitiateAuthCommand({
       ClientId: config.clientId,
-      AuthFlow: "REFRESH_TOKEN_AUTH",
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
       AuthParameters: authParameters,
     });
     const result = await client.send(command);
     if (!result.AuthenticationResult?.IdToken) {
-      throw new AppError("UNAUTHORIZED", "リフレッシュトークンが無効です");
+      throw new AppError('UNAUTHORIZED', 'リフレッシュトークンが無効です');
     }
     return {
       idToken: result.AuthenticationResult.IdToken,
@@ -344,13 +327,11 @@ export async function refreshWithCognito(
       expiresIn: result.AuthenticationResult.ExpiresIn,
     };
   } catch (error) {
-    throw mapCognitoError(error, "リフレッシュトークンが無効です");
+    throw mapCognitoError(error, 'リフレッシュトークンが無効です');
   }
 }
 
-export async function verifyCognitoIdToken(
-  idToken: string
-): Promise<JWTPayload> {
+export async function verifyCognitoIdToken(idToken: string): Promise<JWTPayload> {
   const config = getConfig();
   const jwks = getJwks(config.issuer);
 
@@ -360,8 +341,8 @@ export async function verifyCognitoIdToken(
       audience: config.clientId,
     });
 
-    if (payload.token_use !== "id") {
-      throw new AppError("UNAUTHORIZED", "不正なトークンです");
+    if (payload.token_use !== 'id') {
+      throw new AppError('UNAUTHORIZED', '不正なトークンです');
     }
 
     return payload;
@@ -369,6 +350,6 @@ export async function verifyCognitoIdToken(
     if (error instanceof AppError) {
       throw error;
     }
-    throw new AppError("UNAUTHORIZED", "不正なトークンです");
+    throw new AppError('UNAUTHORIZED', '不正なトークンです');
   }
 }
