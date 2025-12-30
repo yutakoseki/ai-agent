@@ -10,6 +10,7 @@ applications:
         build:
           commands:
             - pnpm build
+            - node ./scripts/patch-next-trace.mjs .next
       artifacts:
         # Amplify の Web Compute バンドラは `.next/server` を基点に bundle を作るため、成果物ルートは `.next` に揃える
         baseDirectory: .next
