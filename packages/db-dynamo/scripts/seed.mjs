@@ -4,11 +4,33 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 
-const REGION = process.env.AWS_REGION || "ap-northeast-1";
+const REGION =
+  process.env.AMPLIFY_AWS_REGION ||
+  process.env.AWS_REGION ||
+  "ap-northeast-1";
 const ENDPOINT = process.env.DYNAMODB_ENDPOINT || "http://localhost:8000";
+const ACCESS_KEY_ID =
+  process.env.AMPLIFY_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+const SECRET_ACCESS_KEY =
+  process.env.AMPLIFY_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+const SESSION_TOKEN =
+  process.env.AMPLIFY_AWS_SESSION_TOKEN || process.env.AWS_SESSION_TOKEN;
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "aiagent-dev";
 
-const client = new DynamoDBClient({ region: REGION, endpoint: ENDPOINT });
+const CREDENTIALS =
+  ACCESS_KEY_ID && SECRET_ACCESS_KEY
+    ? {
+        accessKeyId: ACCESS_KEY_ID,
+        secretAccessKey: SECRET_ACCESS_KEY,
+        sessionToken: SESSION_TOKEN,
+      }
+    : undefined;
+
+const client = new DynamoDBClient({
+  region: REGION,
+  endpoint: ENDPOINT,
+  credentials: ENDPOINT ? CREDENTIALS || { accessKeyId: "local", secretAccessKey: "local" } : CREDENTIALS,
+});
 const doc = DynamoDBDocumentClient.from(client, {
   marshallOptions: { removeUndefinedValues: true },
 });

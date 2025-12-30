@@ -30,9 +30,26 @@ type CognitoConfig = {
 
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 const clientCache = new Map<string, CognitoIdentityProviderClient>();
+const ACCESS_KEY_ID =
+  process.env.AMPLIFY_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+const SECRET_ACCESS_KEY =
+  process.env.AMPLIFY_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+const SESSION_TOKEN =
+  process.env.AMPLIFY_AWS_SESSION_TOKEN || process.env.AWS_SESSION_TOKEN;
+const AWS_CREDENTIALS =
+  ACCESS_KEY_ID && SECRET_ACCESS_KEY
+    ? {
+        accessKeyId: ACCESS_KEY_ID,
+        secretAccessKey: SECRET_ACCESS_KEY,
+        sessionToken: SESSION_TOKEN,
+      }
+    : undefined;
 
 function getConfig(): CognitoConfig {
-  const region = process.env.COGNITO_REGION || process.env.AWS_REGION;
+  const region =
+    process.env.COGNITO_REGION ||
+    process.env.AMPLIFY_AWS_REGION ||
+    process.env.AWS_REGION;
   const userPoolId = process.env.COGNITO_USER_POOL_ID;
   const clientId = process.env.COGNITO_CLIENT_ID;
   const clientSecret = process.env.COGNITO_CLIENT_SECRET || undefined;
@@ -59,7 +76,10 @@ function getConfig(): CognitoConfig {
 function getClient(region: string): CognitoIdentityProviderClient {
   const existing = clientCache.get(region);
   if (existing) return existing;
-  const client = new CognitoIdentityProviderClient({ region });
+  const client = new CognitoIdentityProviderClient({
+    region,
+    credentials: AWS_CREDENTIALS,
+  });
   clientCache.set(region, client);
   return client;
 }
