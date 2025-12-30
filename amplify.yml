@@ -10,30 +10,29 @@ applications:
         build:
           commands:
             - pnpm build
-            # Next.js standalone に必要な静的ファイルを配置
-            # (Amplify の SSR 実行時に参照される)
-            - mkdir -p .next/standalone/apps/web/.next/static
-            - cp -R .next/static/. .next/standalone/apps/web/.next/static
-            - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
-            # Amplify が参照する server trace / outputFileTracing 周りのファイルを確実に含める
-            - rm -rf .next/standalone/apps/web/.next/server
-            - cp -R .next/server .next/standalone/apps/web/.next/server
-            - if [ -f .next/next-server.js.nft.json ]; then cp .next/next-server.js.nft.json .next/standalone/apps/web/.next/next-server.js.nft.json; fi
-            - if [ -f .next/next-minimal-server.js.nft.json ]; then cp .next/next-minimal-server.js.nft.json .next/standalone/apps/web/.next/next-minimal-server.js.nft.json; fi
-            - if [ -f .next/trace ]; then cp .next/trace .next/standalone/apps/web/.next/trace; fi
-            # Amplify が required-server-files.json を baseDirectory 直下に探すケースがあるため複製しておく
-            - cp .next/standalone/apps/web/.next/required-server-files.json .next/standalone/apps/web/required-server-files.json
-            - cp .next/standalone/apps/web/.next/routes-manifest.json .next/standalone/apps/web/routes-manifest.json 2>/dev/null || true
+            # Amplify Hosting の Next.js SSR スキャナが理解できる "standalone 標準レイアウト" を組み立てる
+            # - monorepo だと `.next/standalone/apps/web` にネストされるため、そのままだと trace 検知で落ちることがある
+            - rm -rf .next/amplify-standalone
+            - mkdir -p .next/amplify-standalone
+            - cp -R .next/standalone/apps/web/. .next/amplify-standalone/
+            # Next.js standalone 実行に必要な static / public を配置
+            - mkdir -p .next/amplify-standalone/.next/static
+            - cp -R .next/static/. .next/amplify-standalone/.next/static
+            - if [ -d public ]; then mkdir -p .next/amplify-standalone/public && cp -R public/. .next/amplify-standalone/public; fi
+            # outputFileTracing / trace を確実に含める（環境差で standalone 側に無いことがあるため）
+            - rm -rf .next/amplify-standalone/.next/server
+            - cp -R .next/server .next/amplify-standalone/.next/server
+            - if [ -f .next/next-server.js.nft.json ]; then cp .next/next-server.js.nft.json .next/amplify-standalone/.next/next-server.js.nft.json; fi
+            - if [ -f .next/next-minimal-server.js.nft.json ]; then cp .next/next-minimal-server.js.nft.json .next/amplify-standalone/.next/next-minimal-server.js.nft.json; fi
+            - if [ -f .next/trace ]; then cp .next/trace .next/amplify-standalone/.next/trace; fi
       artifacts:
         # Next.js standalone(monorepo) の実体があるディレクトリを成果物ルートにする
         # ここには server.js / .next/required-server-files.json / node_modules/next が揃う
-        baseDirectory: .next/standalone/apps/web
+        baseDirectory: .next/amplify-standalone
         files:
           # NOTE: '**/*' だけだと `.next` のようなドットディレクトリが成果物に含まれない場合があるため明示する
           - 'server.js'
           - 'package.json'
-          - 'required-server-files.json'
-          - 'routes-manifest.json'
           - 'public/**/*'
           - '.next/**/*'
           - 'node_modules/**/*'
