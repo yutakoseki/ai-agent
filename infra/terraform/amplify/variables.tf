@@ -28,6 +28,12 @@ variable "service_role_name" {
   default     = ""
 }
 
+variable "compute_role_name" {
+  type        = string
+  description = "IAM role name for Amplify SSR compute role"
+  default     = ""
+}
+
 variable "repository" {
   type        = string
   description = "Repository URL for the Amplify app"

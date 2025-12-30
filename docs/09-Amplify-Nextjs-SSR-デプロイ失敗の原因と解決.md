@@ -147,6 +147,56 @@ node-linker=hoisted
 
 ---
 
+## 追加: 「ビルド/デプロイは成功するが、ログインAPIだけ 500」だった原因と解決
+
+Next.js の成果物問題を解消した後でも、Amplify 環境で `/api/auth/login` だけ 500 になるケースがありました。
+このときは **CloudWatch Logs を有効化して traceId で追う**と最短で原因に辿れます。
+
+### 原因1) CloudWatch Logs が見れない（log group が存在しない）
+
+Amplify（SSR/Web Compute）のランタイムログは CloudWatch Logs に出ますが、Amplify 側に **IAM service role** が設定されていないと、ロググループが作成されず、コンソールで
+
+- `The specified log group does not exist.`
+
+のようになります。
+
+AWS公式: `https://docs.aws.amazon.com/amplify/latest/userguide/cloudwatch-logs-role.html`
+
+#### 解決
+
+- Amplify app に `iamServiceRoleArn` を設定し、以下の権限を付与する:
+  - `logs:CreateLogStream`
+  - `logs:CreateLogGroup`
+  - `logs:DescribeLogGroups`
+  - `logs:PutLogEvents`
+
+Terraform では `infra/terraform/amplify` で service role + policy を管理します。
+
+ロググループ（例）:
+
+- `/aws/amplify/<appId>`
+
+### 原因2) DynamoDB の CMK(KMS) に `kms:Decrypt` が無くて 500
+
+CloudWatch Logs を有効化して traceId を追うと、`AccessDeniedException` で
+
+- `is not authorized to perform: kms:Decrypt on resource: arn:aws:kms:...`
+
+が出ていました。これは DynamoDB テーブルが **CMK(KMS) で暗号化**されていて、SSR実行ロール（compute role）に KMS 権限が足りないためです。
+
+#### 解決
+
+- Amplify SSR compute role に、DynamoDB 用 CMK への以下権限を付与する:
+  - `kms:Decrypt`
+  - `kms:Encrypt`
+  - `kms:GenerateDataKey`
+  - `kms:GenerateDataKeyWithoutPlaintext`
+  - `kms:DescribeKey`
+
+Terraform では `infra/terraform/dynamodb` の `dynamodb_access` ポリシーに KMS 権限を含め、Amplify 側（compute role）へアタッチする方式に統一しました。
+
+---
+
 ## 参考リンク
 
 - pnpmモノレポの要件（`.npmrc node-linker=hoisted`）：`https://docs.aws.amazon.com/amplify/latest/userguide/monorepo-configuration.html`

@@ -166,6 +166,20 @@ data "aws_iam_policy_document" "dynamodb_access" {
       "${aws_dynamodb_table.main.arn}/index/*"
     ]
   }
+
+  # DynamoDB SSE に CMK を使っている場合、呼び出し元プリンシパルに KMS 権限が必要になる。
+  # Amplify(Web Compute) の SSR 実行ロールが `kms:Decrypt` を持たないと、API が 500 で落ちる。
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt",
+      "kms:Encrypt",
+      "kms:GenerateDataKey",
+      "kms:GenerateDataKeyWithoutPlaintext",
+      "kms:DescribeKey"
+    ]
+    resources = [aws_kms_key.dynamodb.arn]
+  }
 }
 
 resource "aws_iam_policy" "dynamodb_access" {

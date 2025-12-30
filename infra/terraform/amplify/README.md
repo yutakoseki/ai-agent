@@ -1,6 +1,6 @@
 # Amplify Gen2
 
-Amplify アプリ、Service Role、環境変数を Terraform で管理します。
+Amplify アプリ、**Service Role（CloudWatch Logs 含む）**、**SSR Compute Role**、環境変数を Terraform で管理します。
 
 ## 事前準備
 
@@ -34,3 +34,25 @@ terraform plan \
 - `environment_variables` で Amplify の環境変数を設定
 - `dynamodb_policy_arn` は DynamoDB モジュールの出力に合わせて指定
 - `cognito_user_pool_arn` は Cognito モジュールの出力に合わせて指定
+
+## 既存リソースを Terraform 管理に取り込む（import）
+
+既に Amplify アプリ/ロールを CLI やコンソールで作成済みの場合は、同じ名前で Terraform 側の定義を用意してから `terraform import` します。
+
+例（appId が `d3twt10pcsc29v`、ブランチが `develop` の場合）:
+
+```bash
+# Amplify app
+terraform import aws_amplify_app.main d3twt10pcsc29v
+
+# Amplify branch（作成している場合）
+terraform import 'aws_amplify_branch.main[0]' d3twt10pcsc29v/develop
+
+# IAM roles（名前が一致するように service_role_name / compute_role_name を指定してから import）
+terraform import aws_iam_role.amplify_service ai-agent-amplify-service-role
+terraform import aws_iam_role.amplify_compute ai-agent-amplify-ssr-compute-develop
+```
+
+###### Note
+
+- import 後に `terraform plan` で差分が出る場合は、環境変数やロール名の指定が一致しているかを確認してください。

@@ -2,6 +2,11 @@
 
 Creates the DynamoDB table and the minimal IAM policy for Amplify access.
 
+## Notes
+
+- このモジュールは DynamoDB を **CMK(KMS) で暗号化**します。
+- そのため、DynamoDB の IAM アクセスポリシーには **KMS の `kms:Decrypt` / `kms:GenerateDataKey` 等**も含めています（Amplify(Web Compute) の SSR 実行ロールが無いと 500 で落ちるため）。
+
 ## Usage (example)
 
 ```bash

@@ -23,6 +23,16 @@ output "service_role_name" {
   description = "Amplify service role name"
 }
 
+output "compute_role_arn" {
+  value       = aws_iam_role.amplify_compute.arn
+  description = "Amplify SSR compute role ARN"
+}
+
+output "compute_role_name" {
+  value       = aws_iam_role.amplify_compute.name
+  description = "Amplify SSR compute role name"
+}
+
 output "branch_name" {
   value       = var.create_branch ? aws_amplify_branch.main[0].branch_name : null
   description = "Amplify branch name"
