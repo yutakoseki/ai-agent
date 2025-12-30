@@ -66,17 +66,21 @@ function readAmplifySecret(key: string): string | undefined {
   return undefined;
 }
 
-function env(key: string): string | undefined {
-  return process.env[key] || readAmplifySecret(key);
-}
-
 function getConfig(): CognitoConfig {
   const region =
-    env("COGNITO_REGION") || process.env.AMPLIFY_AWS_REGION || process.env.AWS_REGION;
-  const userPoolId = env("COGNITO_USER_POOL_ID");
-  const clientId = env("COGNITO_CLIENT_ID");
-  const clientSecret = env("COGNITO_CLIENT_SECRET") || undefined;
-  const rawAuthFlow = env("COGNITO_AUTH_FLOW");
+    // 直接参照は Next の build-time env 埋め込みが効く（Amplifyランタイムで env が降りない場合の回避）
+    process.env.COGNITO_REGION ||
+    readAmplifySecret("COGNITO_REGION") ||
+    process.env.AMPLIFY_AWS_REGION ||
+    process.env.AWS_REGION;
+  const userPoolId =
+    process.env.COGNITO_USER_POOL_ID || readAmplifySecret("COGNITO_USER_POOL_ID");
+  const clientId =
+    process.env.COGNITO_CLIENT_ID || readAmplifySecret("COGNITO_CLIENT_ID");
+  const clientSecret =
+    process.env.COGNITO_CLIENT_SECRET || readAmplifySecret("COGNITO_CLIENT_SECRET") || undefined;
+  const rawAuthFlow =
+    process.env.COGNITO_AUTH_FLOW || readAmplifySecret("COGNITO_AUTH_FLOW");
   const authFlow: CognitoAuthFlow =
     rawAuthFlow === "ADMIN_USER_PASSWORD_AUTH"
       ? "ADMIN_USER_PASSWORD_AUTH"
