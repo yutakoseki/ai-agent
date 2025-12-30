@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { createRequire } from "module";
 
 /**
  * Amplify(Web Compute) で `.next` を解析して compute bundle を作るとき、
@@ -13,28 +14,28 @@ import path from "path";
  * このスクリプトは build 後に `.next/*server.js.nft.json` を補正する。
  */
 
-const REQUIRED = [
-  "node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js",
+const REQUIRED_RELATIVE_TO_NEXT_PKG = [
+  "dist/compiled/next-server/app-route.runtime.prod.js",
   // 念のため（環境/ビルド差分で参照される可能性）
-  "node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js",
+  "dist/compiled/next-server/app-route.runtime.dev.js",
 ];
 
 const NEXT_DIR = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(".next");
 const TRACE_FILES = ["next-server.js.nft.json", "next-minimal-server.js.nft.json"];
 
-function patchTrace(tracePath) {
+function patchTrace(tracePath, nextPkgRoot) {
   if (!fs.existsSync(tracePath)) return { tracePath, changed: false, reason: "missing" };
   const raw = fs.readFileSync(tracePath, "utf8");
   const json = JSON.parse(raw);
   if (!Array.isArray(json.files)) return { tracePath, changed: false, reason: "invalid-format" };
 
   const before = new Set(json.files);
-  for (const rel of REQUIRED) {
-    const abs = path.resolve(path.dirname(NEXT_DIR), rel);
-    if (fs.existsSync(abs)) {
-      // `.nft.json` は `.next` からの相対パスになっている想定
-      json.files.push(path.posix.join("..", "..", "..", rel).replace(/\\/g, "/"));
-    }
+  for (const rel of REQUIRED_RELATIVE_TO_NEXT_PKG) {
+    const abs = path.resolve(nextPkgRoot, rel);
+    if (!fs.existsSync(abs)) continue;
+    // `.nft.json` は `.next` からの相対パスを想定
+    const relativeFromNextDir = path.relative(NEXT_DIR, abs).split(path.sep).join("/");
+    json.files.push(relativeFromNextDir);
   }
 
   // 重複除去（順序はできるだけ維持）
@@ -54,7 +55,14 @@ function patchTrace(tracePath) {
 
 let changedAny = false;
 for (const name of TRACE_FILES) {
-  const result = patchTrace(path.join(NEXT_DIR, name));
+  // Next.js 自体がインストールされている場所（pnpm hoisted/monorepoで apps/web/node_modules に居ない場合もある）
+  const require = createRequire(import.meta.url);
+  const nextPkgJson = require.resolve("next/package.json", {
+    paths: [path.dirname(NEXT_DIR)],
+  });
+  const nextPkgRoot = path.dirname(nextPkgJson);
+
+  const result = patchTrace(path.join(NEXT_DIR, name), nextPkgRoot);
   if (result.changed) changedAny = true;
   // eslint-disable-next-line no-console
   console.log(
