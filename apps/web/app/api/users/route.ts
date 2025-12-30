@@ -10,6 +10,8 @@ import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
 import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
 import { listUsers, createUser } from "@/lib/repos/userRepo";
 
+export const runtime = "nodejs";
+
 // テナント内ユーザー一覧取得
 export async function GET(request: NextRequest) {
   const { context, response } = await requireAuth(request);

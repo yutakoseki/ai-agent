@@ -8,6 +8,8 @@ import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
 import { findUser, updateUser } from "@/lib/repos/userRepo";
 
+export const runtime = "nodejs";
+
 // ユーザー詳細取得
 export async function GET(
   request: NextRequest,

@@ -8,6 +8,8 @@ import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
 import { findTenantById } from "@/lib/repos/tenantRepo";
 
+export const runtime = "nodejs";
+
 // テナント詳細取得
 export async function GET(
   request: NextRequest,

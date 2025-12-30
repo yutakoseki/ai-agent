@@ -11,6 +11,8 @@ import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
 import { listTenants, createTenant } from "@/lib/repos/tenantRepo";
 import { createUser } from "@/lib/repos/userRepo";
 
+export const runtime = "nodejs";
+
 // テナント一覧取得（Admin専用）
 export async function GET(request: NextRequest) {
   const { context, response } = await requireAuth(request);
