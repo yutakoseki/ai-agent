@@ -6,6 +6,8 @@ import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
 import { randomUUID } from "crypto";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const traceId = randomUUID();
   const csrfError = requireCsrf(request, traceId);

@@ -1,34 +1,43 @@
 ## 現状
+
 - Amplify Gen2 用の Terraform 定義はまだ追加前です（`infra/terraform/amplify/` はプレースホルダー）。
 - Cognito と DynamoDB は Terraform で管理済みです。Amplify から参照する前提で進めます。
 
 ## 目的
+
 - Amplify Gen2 に Next.js (`apps/web`) をデプロイし、Terraform 管理の Cognito/DynamoDB を利用する。
 
 ## 前提
+
 - AWS CLI と Amplify CLI v12 以上がインストール済み。
 - `pnpm install` 済み。
 - AWS アカウントのクレデンシャルを `aws configure` で設定済み（`ap-northeast-1` 前提）。
 
 ## 手順（暫定）
+
 1. インフラ初期化（Cognito/DynamoDB）
+
    ```bash
    cd /develop/project/ai-agent/infra/terraform
    terraform init
    terraform plan -var 'project=aiagent' -var 'environment=dev'
    terraform apply -var 'project=aiagent' -var 'environment=dev'
    ```
+
    - 出力: `user_pool_id`, `app_client_id`, `dynamodb_table_name` を控える。
 
 2. Amplify プロジェクト作成（まだ Terraform 化していないため手動）
+
    ```bash
    cd /develop/project/ai-agent
    amplify init --appId <新規作成 or 既存ID> --envName dev
    ```
+
    - ビルドコマンドは `pnpm --filter @ai-agent/web build` を指定。
    - アーティファクトディレクトリは `.next`（App Router）を指定。
 
 3. 環境変数設定（Amplify コンソールまたは CLI）
+
    ```
    NEXT_PUBLIC_API_BASE_URL=https://<domain>/api
    API_BASE_URL=https://<domain>/api
@@ -59,6 +68,20 @@ Amplify（SSR / Web Compute）でビルドは通るのにデプロイが失敗�
 
 - [09-Amplify-Nextjs-SSR-デプロイ失敗の原因と解決.md](../09-Amplify-Nextjs-SSR-デプロイ失敗の原因と解決.md)
 
+### ログインだけが 500 になる（ローカルはOK / AmplifyはNG）
+
+`/api/auth/login/` が Amplify で 500 になる場合、まず **Cognito の環境変数が Amplify 側に設定されているか** を確認してください。
+
+- アプリ側は `COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`（必要なら `COGNITO_AUTH_FLOW`, `COGNITO_CLIENT_SECRET`）が無いと認証できません。
+- Amplify コンソールの「Environment variables」か、AWS CLI で設定状況を確認できます。
+
+```bash
+# appId/branch は Amplify のドメインから特定できる（例: develop.<appId>.amplifyapp.com）
+AWS_PROFILE=ai-agent aws amplify get-app --app-id <appId> --region ap-northeast-1 \
+  --query 'app.environmentVariables' --output table
+```
+
 ## 今後のTODO
+
 - Terraform で Amplify Gen2 アプリを管理するモジュールを追加し、環境変数も IaC 化する。
 - ビルド成果物キャッシュと手動トリガを含む運用手順を追加する。

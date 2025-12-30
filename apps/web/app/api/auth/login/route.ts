@@ -13,6 +13,8 @@ import { findUserByUserId } from "@/lib/repos/userRepo";
 import { buildRequestContext, logRequestEnd, logRequestStart } from "@/lib/observability";
 import { writeAuditLog } from "@/lib/audit";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const context = buildRequestContext(request);
   const csrfError = requireCsrf(request, context.traceId);
