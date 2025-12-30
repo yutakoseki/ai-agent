@@ -15,6 +15,9 @@ applications:
             - mkdir -p .next/standalone/apps/web/.next/static
             - cp -R .next/static/. .next/standalone/apps/web/.next/static
             - if [ -d public ]; then mkdir -p .next/standalone/apps/web/public && cp -R public/. .next/standalone/apps/web/public; fi
+            # Amplify が required-server-files.json を baseDirectory 直下に探すケースがあるため複製しておく
+            - cp .next/standalone/apps/web/.next/required-server-files.json .next/standalone/apps/web/required-server-files.json
+            - cp .next/standalone/apps/web/.next/routes-manifest.json .next/standalone/apps/web/routes-manifest.json 2>/dev/null || true
       artifacts:
         # Next.js standalone(monorepo) の実体があるディレクトリを成果物ルートにする
         # ここには server.js / .next/required-server-files.json / node_modules/next が揃う
@@ -23,6 +26,8 @@ applications:
           # NOTE: '**/*' だけだと `.next` のようなドットディレクトリが成果物に含まれない場合があるため明示する
           - 'server.js'
           - 'package.json'
+          - 'required-server-files.json'
+          - 'routes-manifest.json'
           - 'public/**/*'
           - '.next/**/*'
           - 'node_modules/**/*'
