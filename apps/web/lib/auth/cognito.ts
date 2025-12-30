@@ -45,15 +45,38 @@ const AWS_CREDENTIALS =
       }
     : undefined;
 
+function readAmplifySecret(key: string): string | undefined {
+  // Amplify Hosting (Web Compute) can inject SSM parameters into `process.env.secrets`.
+  // - When present, it may be an object or a JSON string (implementation-dependent).
+  const secrets = (process.env as unknown as { secrets?: unknown }).secrets;
+  if (!secrets) return undefined;
+  if (typeof secrets === "object" && secrets !== null) {
+    const value = (secrets as Record<string, unknown>)[key];
+    return typeof value === "string" ? value : undefined;
+  }
+  if (typeof secrets === "string") {
+    try {
+      const parsed = JSON.parse(secrets) as Record<string, unknown>;
+      const value = parsed[key];
+      return typeof value === "string" ? value : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function env(key: string): string | undefined {
+  return process.env[key] || readAmplifySecret(key);
+}
+
 function getConfig(): CognitoConfig {
   const region =
-    process.env.COGNITO_REGION ||
-    process.env.AMPLIFY_AWS_REGION ||
-    process.env.AWS_REGION;
-  const userPoolId = process.env.COGNITO_USER_POOL_ID;
-  const clientId = process.env.COGNITO_CLIENT_ID;
-  const clientSecret = process.env.COGNITO_CLIENT_SECRET || undefined;
-  const rawAuthFlow = process.env.COGNITO_AUTH_FLOW;
+    env("COGNITO_REGION") || process.env.AMPLIFY_AWS_REGION || process.env.AWS_REGION;
+  const userPoolId = env("COGNITO_USER_POOL_ID");
+  const clientId = env("COGNITO_CLIENT_ID");
+  const clientSecret = env("COGNITO_CLIENT_SECRET") || undefined;
+  const rawAuthFlow = env("COGNITO_AUTH_FLOW");
   const authFlow: CognitoAuthFlow =
     rawAuthFlow === "ADMIN_USER_PASSWORD_AUTH"
       ? "ADMIN_USER_PASSWORD_AUTH"
