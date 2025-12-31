@@ -263,11 +263,6 @@ export function RoleManagerClient({
           <div className="space-y-3">
             <div>
               <h2 className="text-lg font-semibold text-ink">新規ユーザー作成</h2>
-              <p className="text-sm text-ink-muted">
-                {sessionRole === "Admin"
-                  ? "作成先テナントを選択してユーザーを作成できます。"
-                  : "自テナント配下にユーザーを作成できます。"}
-              </p>
               {sessionRole !== "Admin" ? (
                 <p className="mt-1 text-xs text-ink-soft">
                   テナント: <span className="font-mono">{sessionTenantId}</span>
@@ -396,11 +391,6 @@ export function RoleManagerClient({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-ink">権限管理</h2>
-          <p className="text-sm text-ink-muted">
-            {canEdit
-              ? "全テナントのユーザーの役割を確認・変更できます。"
-              : "自テナントのユーザーを確認できます（変更はAdminのみ）。"}
-          </p>
         </div>
       </div>
 

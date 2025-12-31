@@ -1,9 +1,9 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { searchUsersPage } from "@/lib/repos/userRepo";
-import { RoleManagerClient } from "./RoleManagerClient";
-import { TenantPermissionsMatrix } from "./TenantPermissionsMatrix";
-import type { UserRole } from "@shared/auth";
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/session';
+import { searchUsersPage } from '@/lib/repos/userRepo';
+import { RoleManagerClient } from './RoleManagerClient';
+import { TenantPermissionsMatrix } from './TenantPermissionsMatrix';
+import type { UserRole } from '@shared/auth';
 
 export default async function AdminRolesPage({
   searchParams,
@@ -13,13 +13,13 @@ export default async function AdminRolesPage({
   const session = await getSession();
 
   if (!session) {
-    redirect("/login");
+    redirect('/login');
   }
 
-  const isAdmin = session.role === "Admin";
-  const qParam = typeof searchParams?.q === "string" ? searchParams.q : undefined;
+  const isAdmin = session.role === 'Admin';
+  const qParam = typeof searchParams?.q === 'string' ? searchParams.q : undefined;
   const tenantIdParam =
-    typeof searchParams?.tenantId === "string" ? searchParams.tenantId : undefined;
+    typeof searchParams?.tenantId === 'string' ? searchParams.tenantId : undefined;
   const effectiveTenantId = isAdmin ? tenantIdParam : session.tenantId;
 
   const { users, nextCursor } = await searchUsersPage({
@@ -31,15 +31,8 @@ export default async function AdminRolesPage({
   return (
     <main className="mx-auto max-w-screen-xl px-4 py-10">
       <header className="mb-6 space-y-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">
-          Admin Console
-        </p>
-        <h1 className="text-2xl font-semibold text-ink">権限管理</h1>
-        <p className="text-sm text-ink-muted">
-          {isAdmin
-            ? "全テナントのユーザーを確認・変更できます。"
-            : "自テナントのユーザーを確認できます。"}
-        </p>
+        <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">Admin Console</p>
+        <h1 className="text-2xl font-semibold text-ink">ユーザー管理</h1>
       </header>
 
       <RoleManagerClient
@@ -60,4 +53,3 @@ export default async function AdminRolesPage({
     </main>
   );
 }
-

@@ -99,7 +99,6 @@ export default function LoginPage() {
       }
 
       setStatus('success');
-      setMessage('ログインに成功しました。セッションが作成されました。');
       router.replace('/');
     } catch {
       setStatus('error');
@@ -182,16 +181,15 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div
-                className={`mt-5 min-h-[44px] rounded-xl border px-3 py-2 text-sm leading-relaxed ${statusClass}`}
-                role="status"
-                aria-live="polite"
-              >
-                {message ?? 'ログイン情報を入力してください。'}
-                {traceId ? (
-                  <span className="mt-1 block text-xs text-ink-soft">トレースID: {traceId}</span>
-                ) : null}
-              </div>
+              {status === 'error' && message ? (
+                <div
+                  className={`mt-5 rounded-xl border px-3 py-2 text-sm leading-relaxed ${statusClass}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {message}
+                </div>
+              ) : null}
 
               <div className="mt-6 grid gap-3">
                 <Button

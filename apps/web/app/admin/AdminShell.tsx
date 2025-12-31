@@ -95,7 +95,7 @@ export function AdminShell(props: {
       },
       {
         href: "/admin/roles",
-        label: "権限管理",
+        label: "ユーザー管理",
         icon: <IconShield className="h-5 w-5" aria-hidden="true" />,
       },
     ];
