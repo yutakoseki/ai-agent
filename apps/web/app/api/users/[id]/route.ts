@@ -6,7 +6,7 @@ import { AppError } from "@shared/error";
 import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
-import { findUser, updateUser } from "@/lib/repos/userRepo";
+import { findUser, findUserByUserId, updateUser } from "@/lib/repos/userRepo";
 
 export const runtime = "nodejs";
 
@@ -21,19 +21,24 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const user = await findUser(context.session.tenantId, id);
+    const isAdmin = context.session.role === "Admin";
+    const user = isAdmin
+      ? await findUserByUserId(id)
+      : await findUser(context.session.tenantId, id);
 
     if (!user) {
       throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
     }
 
-    // テナント分離チェック
-    const tenantError = requireTenant(
-      context.session,
-      user.tenantId,
-      context.traceId
-    );
-    if (tenantError) return tenantError;
+    // テナント分離チェック（Adminは横断閲覧可能）
+    if (!isAdmin) {
+      const tenantError = requireTenant(
+        context.session,
+        user.tenantId,
+        context.traceId
+      );
+      if (tenantError) return tenantError;
+    }
 
     return NextResponse.json(user, {
       headers: { "X-Trace-Id": context.traceId },
@@ -58,23 +63,27 @@ export async function PATCH(
     const { id } = await params;
     const body: UpdateUserRequest = await request.json();
 
-    const user = await findUser(context.session.tenantId, id);
+    const isAdmin = context.session.role === "Admin";
+    const user = isAdmin
+      ? await findUserByUserId(id)
+      : await findUser(context.session.tenantId, id);
 
     if (!user) {
       throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
     }
 
-    // テナント分離チェック
-    const tenantError = requireTenant(
-      context.session,
-      user.tenantId,
-      context.traceId
-    );
-    if (tenantError) return tenantError;
+    // テナント分離チェック（Adminは横断更新可能）
+    if (!isAdmin) {
+      const tenantError = requireTenant(
+        context.session,
+        user.tenantId,
+        context.traceId
+      );
+      if (tenantError) return tenantError;
+    }
 
     // 権限チェック
     const isSelf = context.session.userId === id;
-    const isAdmin = context.session.role === "Admin";
     const isAdminOrManager = ["Admin", "Manager"].includes(
       context.session.role
     );
@@ -88,21 +97,13 @@ export async function PATCH(
       if (!isAdmin) {
         throw new AppError("FORBIDDEN", "役割を変更できるのは管理者のみです");
       }
-      if (isSelf) {
-        throw new AppError("FORBIDDEN", "自分自身の役割は変更できません");
-      }
-      if (!["Manager", "Member"].includes(body.role)) {
-        throw new AppError(
-          "BAD_REQUEST",
-          "設定できる役割は Manager または Member のみです"
-        );
-      }
-      if (user.role === "Admin") {
-        throw new AppError("FORBIDDEN", "Admin の役割はここでは変更できません");
+      if (!["Admin", "Manager", "Member"].includes(body.role)) {
+        throw new AppError("BAD_REQUEST", "不正な role です");
       }
     }
 
-    const updatedUser = await updateUser(context.session.tenantId, id, {
+    const targetTenantId = isAdmin ? user.tenantId : context.session.tenantId;
+    const updatedUser = await updateUser(targetTenantId, id, {
       email: body.email,
       name: body.name,
       role: body.role,

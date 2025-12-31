@@ -15,10 +15,16 @@ export function TenantApplicationManagerClient({ initialApplications }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<TenantApplication | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>("");
 
   const rows = useMemo(() => applications, [applications]);
 
-  async function review(id: string, decision: "approve" | "reject") {
+  async function review(
+    id: string,
+    decision: "approve" | "reject",
+    decisionNote?: string
+  ) {
     setBusyId(id);
     setMessage(null);
     setError(null);
@@ -28,7 +34,7 @@ export function TenantApplicationManagerClient({ initialApplications }: Props) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({ decision, decisionNote }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -45,6 +51,29 @@ export function TenantApplicationManagerClient({ initialApplications }: Props) {
     } finally {
       setBusyId(null);
     }
+  }
+
+  function openRejectModal(application: TenantApplication) {
+    setRejectTarget(application);
+    setRejectReason("");
+    setMessage(null);
+    setError(null);
+  }
+
+  function closeRejectModal() {
+    setRejectTarget(null);
+    setRejectReason("");
+  }
+
+  async function submitReject() {
+    if (!rejectTarget) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setError("却下理由を入力してください");
+      return;
+    }
+    await review(rejectTarget.id, "reject", reason);
+    closeRejectModal();
   }
 
   return (
@@ -74,29 +103,30 @@ export function TenantApplicationManagerClient({ initialApplications }: Props) {
                 key={a.id}
                 className="grid grid-cols-[1.4fr_0.8fr_1.4fr_0.9fr_1.2fr] items-center px-4 py-3 text-sm text-ink"
               >
-                <div className="min-w-0">
-                  <Link
-                    href={`/admin/tenant-applications/${a.id}`}
-                    className="truncate font-medium underline decoration-ink/20 underline-offset-4 hover:decoration-ink/40"
-                  >
-                    {a.tenantName}
-                  </Link>
-                  <div className="truncate text-xs text-ink-soft">
-                    {a.contactName ? `${a.contactName} / ` : ""}
-                    {a.contactEmail}
-                  </div>
-                </div>
-
-                <div className="text-ink-soft">{a.plan}</div>
-                <div className="truncate text-ink-soft">{a.contactEmail}</div>
-                <div className="text-ink-soft">
-                  {a.status}
-                  {a.createdTenantId ? (
-                    <div className="mt-0.5 truncate text-[11px] text-ink-soft">
-                      tenant: <span className="font-mono">{a.createdTenantId}</span>
+                <Link
+                  href={`/admin/tenant-applications/${a.id}`}
+                  className="col-span-4 grid grid-cols-[1.4fr_0.8fr_1.4fr_0.9fr] items-center gap-0 rounded-xl px-2 py-2 hover:bg-surface-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  title="詳細を開く"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{a.tenantName}</div>
+                    <div className="truncate text-xs text-ink-soft">
+                      {a.contactName ? `${a.contactName} / ` : ""}
+                      {a.contactEmail}
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+
+                  <div className="text-ink-soft">{a.plan}</div>
+                  <div className="truncate text-ink-soft">{a.contactEmail}</div>
+                  <div className="text-ink-soft">
+                    {a.status}
+                    {a.createdTenantId ? (
+                      <div className="mt-0.5 truncate text-[11px] text-ink-soft">
+                        tenant: <span className="font-mono">{a.createdTenantId}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </Link>
 
                 <div className="flex justify-end gap-2">
                   <Button
@@ -111,7 +141,7 @@ export function TenantApplicationManagerClient({ initialApplications }: Props) {
                     size="sm"
                     variant="secondary"
                     disabled={!isPending || busy}
-                    onClick={() => review(a.id, "reject")}
+                    onClick={() => openRejectModal(a)}
                   >
                     却下
                   </Button>
@@ -132,6 +162,61 @@ export function TenantApplicationManagerClient({ initialApplications }: Props) {
         {message ? <p className="text-primary">{message}</p> : null}
         {error ? <p className="text-accent">{error}</p> : null}
       </div>
+
+      {rejectTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="却下理由の入力"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeRejectModal();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") closeRejectModal();
+          }}
+          tabIndex={-1}
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-ink/10 bg-surface/95 p-5 shadow-panel">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-ink">却下理由を入力</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                対象: <span className="font-medium">{rejectTarget.tenantName}</span>
+              </p>
+            </div>
+
+            <label className="flex flex-col gap-1 text-sm text-ink">
+              <span className="font-medium">却下理由（必須）</span>
+              <textarea
+                className="min-h-[120px] rounded-xl border border-ink/10 bg-surface-raised/80 px-3 py-2 text-sm text-ink placeholder:text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="例: 要件が不足しています（会社情報/利用目的/担当者情報など）"
+                disabled={busyId === rejectTarget.id}
+              />
+            </label>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={closeRejectModal}
+                disabled={busyId === rejectTarget.id}
+              >
+                キャンセル
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={submitReject}
+                disabled={busyId === rejectTarget.id}
+              >
+                {busyId === rejectTarget.id ? "送信中..." : "却下する"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

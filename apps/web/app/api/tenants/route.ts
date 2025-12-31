@@ -8,22 +8,40 @@ import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
 import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
 import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
-import { listTenants, createTenant } from "@/lib/repos/tenantRepo";
+import { listTenants, createTenant, findTenantById } from "@/lib/repos/tenantRepo";
 import { createUser } from "@/lib/repos/userRepo";
+import { requirePermission } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 
-// テナント一覧取得（Admin専用）
+// テナント一覧取得（Admin:全件 / Manager・Member:ポリシー許可時は自テナントのみ）
 export async function GET(request: NextRequest) {
   const { context, response } = await requireAuth(request);
   if (response) return response;
 
   try {
-    // Admin権限チェック
-    const roleError = requireRole(context.session, ["Admin"], context.traceId);
-    if (roleError) return roleError;
+    if (context.session.role === "Admin") {
+      const tenants = await listTenants();
+      const result: TenantListResponse = {
+        tenants,
+        total: tenants.length,
+        page: 1,
+        pageSize: tenants.length,
+      };
+      return NextResponse.json(result, {
+        headers: { "X-Trace-Id": context.traceId },
+      });
+    }
 
-    const tenants = await listTenants();
+    const perm = await requirePermission({
+      session: context.session,
+      key: "tenant.list",
+      traceId: context.traceId,
+    });
+    if (!perm.ok) return perm.response;
+
+    const selfTenant = await findTenantById(context.session.tenantId);
+    const tenants = selfTenant ? [selfTenant] : [];
     const result: TenantListResponse = {
       tenants,
       total: tenants.length,

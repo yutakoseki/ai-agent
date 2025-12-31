@@ -4,6 +4,7 @@ import type {
   ReviewTenantApplicationDecision,
   TenantApplication,
   TenantApplicationStatus,
+  UpdateTenantApplicationRequest,
 } from "@shared/tenantApplication";
 import { AppError } from "@shared/error";
 import { getItem, putItem, queryGSI1, updateItem } from "@db/tenant-client";
@@ -116,6 +117,79 @@ export async function reviewTenantApplication(options: {
     `SET ${sets.join(", ")}`,
     values,
     names
+  );
+
+  const updated = await getItem<TenantApplicationItem>(
+    SYSTEM_TENANT_ID,
+    `${SK_PREFIX}${options.id}`
+  );
+  if (!updated) {
+    throw new AppError("INTERNAL_ERROR", "更新に失敗しました");
+  }
+  return mapTenantApplication(updated);
+}
+
+export async function updateTenantApplication(options: {
+  id: string;
+  input: UpdateTenantApplicationRequest;
+}): Promise<TenantApplication> {
+  const current = await getItem<TenantApplicationItem>(
+    SYSTEM_TENANT_ID,
+    `${SK_PREFIX}${options.id}`
+  );
+  if (!current) {
+    throw new AppError("NOT_FOUND", "テナント申請が見つかりません");
+  }
+  if (current.status !== "Pending") {
+    throw new AppError("BAD_REQUEST", "処理済みの申請は編集できません");
+  }
+
+  const sets: string[] = [];
+  const values: Record<string, unknown> = {};
+  const names: Record<string, string> = {};
+
+  if (options.input.tenantName !== undefined) {
+    sets.push("tenantName = :tenantName");
+    values[":tenantName"] = options.input.tenantName;
+  }
+
+  if (options.input.plan !== undefined) {
+    sets.push("#plan = :plan");
+    values[":plan"] = options.input.plan;
+    names["#plan"] = "plan";
+  }
+
+  if (options.input.contactEmail !== undefined) {
+    sets.push("contactEmail = :contactEmail");
+    values[":contactEmail"] = options.input.contactEmail;
+  }
+
+  if (options.input.contactName !== undefined) {
+    sets.push("contactName = :contactName");
+    values[":contactName"] = options.input.contactName;
+  }
+
+  if (options.input.note !== undefined) {
+    sets.push("#note = :note");
+    values[":note"] = options.input.note;
+    names["#note"] = "note";
+  }
+
+  const now = new Date().toISOString();
+  sets.push("updatedAt = :updatedAt");
+  values[":updatedAt"] = now;
+
+  if (sets.length === 1) {
+    // updatedAt 以外に変更が無い
+    return mapTenantApplication(current);
+  }
+
+  await updateItem(
+    SYSTEM_TENANT_ID,
+    `${SK_PREFIX}${options.id}`,
+    `SET ${sets.join(", ")}`,
+    values,
+    Object.keys(names).length > 0 ? names : undefined
   );
 
   const updated = await getItem<TenantApplicationItem>(

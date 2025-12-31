@@ -4,6 +4,9 @@ export type UUID = string;
 // 認証関連
 export * from "./auth";
 
+// 権限関連
+export * from "./permissions";
+
 // テナント関連
 export * from "./tenant";
 

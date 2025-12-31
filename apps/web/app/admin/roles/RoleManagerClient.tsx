@@ -3,17 +3,25 @@
 import { useMemo, useState } from "react";
 import type { UserRole } from "@shared/auth";
 import type { User } from "@shared/user";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 type Props = {
   initialUsers: User[];
   selfId: string;
+  canEdit: boolean;
+  showTenantId?: boolean;
 };
 
-const editableRoles: UserRole[] = ["Manager", "Member"];
+const allRoles: UserRole[] = ["Admin", "Manager", "Member"];
 
-export function RoleManagerClient({ initialUsers, selfId }: Props) {
+export function RoleManagerClient({
+  initialUsers,
+  selfId,
+  canEdit,
+  showTenantId = false,
+}: Props) {
   const [users, setUsers] = useState(initialUsers);
   const [pendingRole, setPendingRole] = useState<Record<string, UserRole>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -23,14 +31,13 @@ export function RoleManagerClient({ initialUsers, selfId }: Props) {
   const rows = useMemo(
     () =>
       users.map((user) => {
-        const role = pendingRole[user.id] ?? user.role;
-        const editable =
-          editableRoles.includes(user.role) && editableRoles.includes(role);
+        const originalRole = user.role;
+        const nextRole = pendingRole[user.id] ?? originalRole;
         const isSelf = user.id === selfId;
-        const disabled = !editable || isSelf;
-        return { ...user, isSelf, role, disabled };
+        const disabled = !canEdit;
+        return { ...user, isSelf, originalRole, nextRole, disabled };
       }),
-    [users, pendingRole, selfId]
+    [users, pendingRole, selfId, canEdit]
   );
 
   async function updateRole(userId: string, nextRole: UserRole) {
@@ -77,15 +84,25 @@ export function RoleManagerClient({ initialUsers, selfId }: Props) {
         <div>
           <h2 className="text-lg font-semibold text-ink">権限管理</h2>
           <p className="text-sm text-ink-muted">
-            Admin 専用。Manager / Member の役割を確認・変更できます。
+            {canEdit
+              ? "全テナントのユーザーの役割を確認・変更できます。"
+              : "自テナントのユーザーを確認できます（変更はAdminのみ）。"}
           </p>
         </div>
       </div>
 
       <Card className="overflow-hidden border border-ink/10 bg-surface/90 shadow-panel">
         <div className="divide-y divide-ink/10">
-          <div className="grid grid-cols-[1.4fr_1.4fr_1fr_0.8fr] items-center bg-secondary/40 px-4 py-3 text-sm font-medium text-ink-soft">
+          <div
+            className={[
+              "grid items-center bg-secondary/40 px-4 py-3 text-sm font-medium text-ink-soft",
+              showTenantId
+                ? "grid-cols-[1.2fr_1.4fr_1.4fr_1fr_0.8fr]"
+                : "grid-cols-[1.4fr_1.4fr_1fr_0.8fr]",
+            ].join(" ")}
+          >
             <span>名前</span>
+            {showTenantId ? <span>テナント</span> : null}
             <span>メール</span>
             <span>役割</span>
             <span className="text-right">操作</span>
@@ -94,15 +111,38 @@ export function RoleManagerClient({ initialUsers, selfId }: Props) {
           {rows.map((user) => (
             <div
               key={user.id}
-              className="grid grid-cols-[1.4fr_1.4fr_1fr_0.8fr] items-center px-4 py-3 text-sm text-ink"
+              className={[
+                "grid items-center px-4 py-3 text-sm text-ink",
+                showTenantId
+                  ? "grid-cols-[1.2fr_1.4fr_1.4fr_1fr_0.8fr]"
+                  : "grid-cols-[1.4fr_1.4fr_1fr_0.8fr]",
+              ].join(" ")}
             >
-              <div className="truncate">{user.name ?? "（未設定）"}</div>
-              <div className="truncate text-ink-soft">{user.email}</div>
+              <Link
+                href={`/admin/users/${user.id}`}
+                className={[
+                  "rounded-xl px-2 py-2 hover:bg-surface-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  showTenantId
+                    ? "col-span-3 grid grid-cols-[1.2fr_1.4fr_1.4fr] items-center"
+                    : "col-span-2 grid grid-cols-[1.4fr_1.4fr] items-center",
+                ].join(" ")}
+                title="詳細を開く"
+              >
+                <div className="truncate font-medium">
+                  {user.name ?? "（未設定）"}
+                </div>
+                {showTenantId ? (
+                  <div className="truncate font-mono text-xs text-ink-soft">
+                    {user.tenantId}
+                  </div>
+                ) : null}
+                <div className="truncate text-ink-soft">{user.email}</div>
+              </Link>
 
               <div className="flex items-center gap-2">
                 <select
                   className="w-full rounded-lg border border-ink/15 bg-surface-raised/80 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-ink/5"
-                  value={user.role}
+                  value={user.nextRole}
                   onChange={(event) =>
                     setPendingRole((prev) => ({
                       ...prev,
@@ -111,9 +151,7 @@ export function RoleManagerClient({ initialUsers, selfId }: Props) {
                   }
                   disabled={user.disabled || busyId === user.id}
                 >
-                  <option value={user.role}>{user.role}</option>
-                  {editableRoles
-                    .filter((r) => r !== user.role)
+                  {allRoles
                     .map((role) => (
                       <option key={role} value={role}>
                         {role}
@@ -122,9 +160,6 @@ export function RoleManagerClient({ initialUsers, selfId }: Props) {
                 </select>
                 {user.isSelf ? (
                   <span className="text-xs text-ink-soft">自分</span>
-                ) : null}
-                {user.role === "Admin" ? (
-                  <span className="text-xs text-ink-soft">Admin固定</span>
                 ) : null}
               </div>
 
@@ -135,10 +170,10 @@ export function RoleManagerClient({ initialUsers, selfId }: Props) {
                   disabled={
                     user.disabled ||
                     busyId === user.id ||
-                    (pendingRole[user.id] ?? user.role) === user.role
+                    user.nextRole === user.originalRole
                   }
                   onClick={() =>
-                    updateRole(user.id, pendingRole[user.id] ?? user.role)
+                    updateRole(user.id, user.nextRole)
                   }
                 >
                   {busyId === user.id ? "更新中..." : "更新"}

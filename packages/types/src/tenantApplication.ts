@@ -40,4 +40,12 @@ export interface ReviewTenantApplicationRequest {
   decisionNote?: string;
 }
 
+export interface UpdateTenantApplicationRequest {
+  tenantName?: string;
+  plan?: PlanType;
+  contactEmail?: string;
+  contactName?: string;
+  note?: string;
+}
+
 

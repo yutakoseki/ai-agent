@@ -3,10 +3,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { UpdateTenantRequest } from "@shared/tenant";
 import { AppError } from "@shared/error";
-import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
+import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
 import { findTenantById } from "@/lib/repos/tenantRepo";
+import { requirePermission } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 
@@ -21,10 +22,14 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // 自テナントまたはAdmin権限チェック
     if (context.session.role !== "Admin") {
-      const tenantError = requireTenant(context.session, id, context.traceId);
-      if (tenantError) return tenantError;
+      const perm = await requirePermission({
+        session: context.session,
+        key: "tenant.read",
+        traceId: context.traceId,
+        resourceTenantId: id,
+      });
+      if (!perm.ok) return perm.response;
     }
 
     const tenant = await findTenantById(id);

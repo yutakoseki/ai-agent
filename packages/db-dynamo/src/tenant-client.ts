@@ -4,6 +4,7 @@ import {
   QueryCommand,
   UpdateCommand,
   DeleteCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "./client";
 import { TABLE_NAME, GSI1_NAME, GSI2_NAME } from "./table";
@@ -128,6 +129,24 @@ export async function deleteItem(tenantId: string, sk: string) {
       Key: { PK: `TENANT#${tenantId}`, SK: sk },
       ConditionExpression: "PK = :pk",
       ExpressionAttributeValues: { ":pk": `TENANT#${tenantId}` },
+    })
+  );
+}
+
+export async function transactWrite(transactItems: Array<Record<string, unknown>>) {
+  // TableName を省略できるようにする（呼び出し側で毎回指定しない）
+  const normalized = transactItems.map((ti) => {
+    const copy: any = { ...(ti as any) };
+    if (copy.Put && !copy.Put.TableName) copy.Put.TableName = TABLE_NAME;
+    if (copy.Delete && !copy.Delete.TableName) copy.Delete.TableName = TABLE_NAME;
+    if (copy.Update && !copy.Update.TableName) copy.Update.TableName = TABLE_NAME;
+    if (copy.ConditionCheck && !copy.ConditionCheck.TableName)
+      copy.ConditionCheck.TableName = TABLE_NAME;
+    return copy;
+  });
+  await docClient.send(
+    new TransactWriteCommand({
+      TransactItems: normalized as any,
     })
   );
 }

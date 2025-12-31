@@ -4,13 +4,21 @@ import {
   putItem,
   queryByPrefix,
   getItem,
+  queryGSI1,
   queryGSI2,
+  transactWrite,
   updateItem,
 } from "@db/tenant-client";
 import type { UserItem } from "@db/types";
 
 export async function listUsers(tenantId: string): Promise<User[]> {
   const items = await queryByPrefix<UserItem>(tenantId, "USER#");
+  return items.map(mapUser);
+}
+
+export async function listAllUsers(): Promise<User[]> {
+  // NOTE: GSI1PK="USER" で全テナントのユーザーを横断取得
+  const items = await queryGSI1<UserItem>("USER");
   return items.map(mapUser);
 }
 
@@ -64,6 +72,59 @@ export async function findUserByUserId(
   return mapUser(items[0]);
 }
 
+export async function moveUserToTenant(
+  userId: string,
+  destTenantId: string
+): Promise<User> {
+  const items = await queryGSI2<UserItem>(`USER#${userId}`);
+  if (items.length === 0) {
+    throw new Error("User not found");
+  }
+
+  const current = items[0];
+  const srcTenantId = current.PK.replace("TENANT#", "");
+  if (srcTenantId === destTenantId) {
+    return mapUser(current);
+  }
+
+  const now = new Date().toISOString();
+  const sk = `USER#${userId}` as const;
+
+  const nextItem: UserItem = {
+    PK: `TENANT#${destTenantId}`,
+    SK: sk,
+    email: current.email,
+    role: current.role,
+    name: current.name,
+    passwordHash: current.passwordHash,
+    createdAt: current.createdAt,
+    updatedAt: now,
+    GSI1PK: "USER",
+    GSI1SK: current.GSI1SK ?? current.createdAt,
+    GSI2PK: `USER#${userId}`,
+    GSI2SK: `TENANT#${destTenantId}`,
+  };
+
+  await transactWrite([
+    {
+      Put: {
+        Item: nextItem,
+        ConditionExpression:
+          "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      },
+    },
+    {
+      Delete: {
+        Key: { PK: `TENANT#${srcTenantId}`, SK: sk },
+        ConditionExpression:
+          "attribute_exists(PK) AND attribute_exists(SK)",
+      },
+    },
+  ]);
+
+  return mapUser(nextItem);
+}
+
 export async function updateUser(
   tenantId: string,
   userId: string,
@@ -71,6 +132,7 @@ export async function updateUser(
 ): Promise<User> {
   const sets: string[] = [];
   const values: Record<string, unknown> = {};
+  const names: Record<string, string> = {};
 
   if (input.email !== undefined) {
     sets.push("email = :email");
@@ -78,13 +140,17 @@ export async function updateUser(
   }
 
   if (input.role !== undefined) {
-    sets.push("role = :role");
+    // DynamoDB reserved keyword 対策
+    sets.push("#role = :role");
     values[":role"] = input.role;
+    names["#role"] = "role";
   }
 
   if (input.name !== undefined) {
-    sets.push("name = :name");
+    // DynamoDB reserved keyword 対策（name も予約語）
+    sets.push("#name = :name");
     values[":name"] = input.name;
+    names["#name"] = "name";
   }
 
   const now = new Date().toISOString();
@@ -103,7 +169,8 @@ export async function updateUser(
     tenantId,
     `USER#${userId}`,
     `SET ${sets.join(", ")}`,
-    values
+    values,
+    Object.keys(names).length ? names : undefined
   );
 
   const updated = await getItem<UserItem>(tenantId, `USER#${userId}`);
