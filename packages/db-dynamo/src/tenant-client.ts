@@ -103,7 +103,8 @@ export async function updateItem(
   tenantId: string,
   sk: string,
   updateExpr: string,
-  values: Record<string, unknown>
+  values: Record<string, unknown>,
+  names?: Record<string, string>
 ) {
   await docClient.send(
     new UpdateCommand({
@@ -115,7 +116,7 @@ export async function updateItem(
         ":pk": `TENANT#${tenantId}`,
       },
       ConditionExpression: "PK = :pk",
-      ExpressionAttributeNames: undefined,
+      ExpressionAttributeNames: names,
     })
   );
 }

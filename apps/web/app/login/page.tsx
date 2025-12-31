@@ -165,6 +165,26 @@ export default function LoginPage() {
                   <span className="mt-1 block text-xs text-ink-soft">トレースID: {traceId}</span>
                 ) : null}
               </div>
+
+              <div className="mt-6 grid gap-3">
+                <div className="rounded-xl border border-ink/10 bg-surface-raised/60 px-4 py-3">
+                  <p className="text-sm font-medium text-ink">新規テナントの方</p>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    まだアカウントが無い場合は、先にテナント申請を送信してください。
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-10 w-full rounded-xl"
+                      onClick={() => router.push('/tenant/apply')}
+                      disabled={isBusy}
+                    >
+                      テナント申請へ
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
 

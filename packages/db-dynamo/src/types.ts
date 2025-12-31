@@ -29,3 +29,22 @@ export type AuditItem = {
   createdAt: string;
 };
 
+export type TenantApplicationItem = {
+  PK: `TENANT#${string}`;
+  SK: `TENANT_APPLICATION#${string}`;
+  tenantName: string;
+  plan: "Basic" | "Pro" | "Enterprise";
+  contactEmail: string;
+  contactName?: string;
+  note?: string;
+  status: "Pending" | "Approved" | "Rejected";
+  decisionNote?: string;
+  decidedAt?: string;
+  decidedByUserId?: string;
+  createdTenantId?: string;
+  createdAt: string;
+  updatedAt: string;
+  GSI1PK: "TENANT_APPLICATION";
+  GSI1SK: string;
+};
+

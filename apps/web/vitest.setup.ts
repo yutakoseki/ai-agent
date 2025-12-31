@@ -12,6 +12,8 @@ beforeAll(() => {
   process.env.PASSWORD_RESET_EXPIRES_IN = "1h";
   process.env.PASSWORD_RESET_SECRET =
     "test-password-reset-secret-min-32-characters-long";
+  // テストではメール送信を完全に無効化（副作用を避ける）
+  process.env.EMAIL_PROVIDER = "disabled";
 });
 
 afterEach(() => {

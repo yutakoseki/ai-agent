@@ -9,7 +9,7 @@ export async function listTenants(): Promise<Tenant[]> {
 }
 
 export async function createTenant(
-  input: CreateTenantRequest,
+  input: Pick<CreateTenantRequest, "name" | "plan">,
   tenantId?: string
 ): Promise<Tenant> {
   const id = tenantId ?? randomUUID();

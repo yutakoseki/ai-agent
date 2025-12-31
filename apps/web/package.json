@@ -19,6 +19,7 @@
   "dependencies": {
     "@ai-agent/db-dynamo": "workspace:*",
     "@aws-sdk/client-cognito-identity-provider": "^3.679.0",
+    "@aws-sdk/client-ses": "^3.958.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "cookie": "^1.1.1",
