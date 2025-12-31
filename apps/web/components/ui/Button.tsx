@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import clsx from "clsx";
 
-type ButtonVariant = "primary" | "ghost" | "secondary";
+type ButtonVariant = "primary" | "ghost" | "secondary" | "danger";
 type ButtonSize = "md" | "sm";
 
 type Props = {
@@ -21,6 +21,8 @@ const variants: Record<ButtonVariant, string> = {
     "bg-transparent text-ink hover:bg-surface active:bg-surface-raised border border-surface",
   secondary:
     "bg-surface text-ink hover:bg-surface-raised border border-surface active:border-primary",
+  danger:
+    "bg-secondary text-ink hover:bg-secondary-light active:bg-secondary-dark border border-ink/10",
 };
 
 const sizes: Record<ButtonSize, string> = {

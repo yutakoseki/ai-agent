@@ -10,8 +10,10 @@ import {
   queryGSI2,
   transactWrite,
   updateItem,
+  deleteItem,
 } from "@db/tenant-client";
 import type { UserItem } from "@db/types";
+import { AppError } from "@shared/error";
 
 export async function listUsers(tenantId: string): Promise<User[]> {
   const items = await queryByPrefix<UserItem>(tenantId, "USER#");
@@ -270,6 +272,21 @@ export async function updateUserPasswordHash(
       ":updatedAt": now,
     }
   );
+}
+
+export async function deleteUser(tenantId: string, userId: string): Promise<void> {
+  try {
+    await deleteItem(tenantId, `USER#${userId}`);
+  } catch (error) {
+    // ConditionExpression により、存在しない場合は ConditionalCheckFailedException になり得る
+    if (error && typeof error === "object" && "name" in error) {
+      const name = String((error as { name?: string }).name);
+      if (name === "ConditionalCheckFailedException") {
+        throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
+      }
+    }
+    throw error;
+  }
 }
 
 function mapUser(item: UserItem): User {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { UserRole } from '@shared/auth';
 import type { User } from '@shared/user';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,7 @@ type Props = {
 const allRoles: UserRole[] = ['Admin', 'Manager', 'Member'];
 
 export function UserDetailClient({ initialUser, session }: Props) {
+  const router = useRouter();
   const [user, setUser] = useState(initialUser);
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export function UserDetailClient({ initialUser, session }: Props) {
 
   const isBusy = status === 'loading';
   const isAdmin = session.role === 'Admin';
+  const canDelete = session.role === 'Admin' || session.role === 'Manager';
   const isSelf = session.userId === user.id;
 
   const canEditRole = isAdmin; // role変更はAdminのみ
@@ -116,6 +119,45 @@ export function UserDetailClient({ initialUser, session }: Props) {
     }
   }
 
+  async function removeUser() {
+    if (isSelf) {
+      setStatus('error');
+      setMessage('自分自身を削除することはできません');
+      return;
+    }
+    const ok = window.confirm(
+      `ユーザーを削除します。\n\n対象: ${user.email}\nユーザーID: ${user.id}\n\nこの操作は取り消せません。続行しますか？`
+    );
+    if (!ok) return;
+
+    setStatus('loading');
+    setMessage(null);
+    setTraceId(null);
+
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      setTraceId(data?.traceId || res.headers.get('X-Trace-Id'));
+
+      if (!res.ok) {
+        setStatus('error');
+        setMessage(data?.message ?? '削除に失敗しました');
+        return;
+      }
+
+      setStatus('success');
+      setMessage('ユーザーを削除しました');
+      router.push('/admin/roles');
+      router.refresh();
+    } catch {
+      setStatus('error');
+      setMessage('通信に失敗しました');
+    }
+  }
+
   return (
     <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
       <Card title="ユーザー情報" className="border border-ink/10 bg-surface/90">
@@ -178,6 +220,23 @@ export function UserDetailClient({ initialUser, session }: Props) {
           >
             {isBusy ? '更新中...' : '更新'}
           </Button>
+
+          {canDelete ? (
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="danger"
+                className="w-full"
+                disabled={isBusy || isSelf}
+                onClick={removeUser}
+              >
+                {isBusy ? '処理中...' : '削除'}
+              </Button>
+              {isSelf ? (
+                <p className="mt-1 text-xs text-ink-soft">自分自身は削除できません。</p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className={`rounded-lg border px-4 py-3 text-sm ${statusClass}`}>
             <p>{message ?? '変更して「更新」を押してください。'}</p>
