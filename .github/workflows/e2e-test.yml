@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ steps.url.outputs.environment }}
-          path: playwright-report/
+          path: apps/web/playwright-report/
           retention-days: 30
 
       - name: Upload test videos
@@ -69,5 +69,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-videos-${{ steps.url.outputs.environment }}
-          path: test-results/
+          path: apps/web/test-results/
           retention-days: 7
