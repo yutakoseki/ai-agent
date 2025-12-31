@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ steps.url.outputs.environment }}
           path: playwright-report/
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload test videos
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-videos-${{ steps.url.outputs.environment }}
           path: test-results/
