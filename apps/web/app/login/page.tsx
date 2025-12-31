@@ -100,9 +100,7 @@ export default function LoginPage() {
 
       setStatus('success');
       setMessage('ログインに成功しました。セッションが作成されました。');
-      const role = data?.user?.role;
-      const destination = role === 'Admin' ? '/admin/roles' : '/';
-      router.replace(destination);
+      router.replace('/');
     } catch {
       setStatus('error');
       setMessage('通信に失敗しました。ネットワークを確認してください。');

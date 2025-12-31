@@ -82,6 +82,11 @@ export function AdminShell(props: {
   const navItems: NavItem[] = useMemo(
     () => [
       {
+        href: "/",
+        label: "ホーム",
+        icon: <IconHome className="h-5 w-5" aria-hidden="true" />,
+      },
+      {
         href: "/admin/tenant-applications",
         label: "テナント申請",
         icon: <IconInbox className="h-5 w-5" aria-hidden="true" />,
@@ -90,11 +95,6 @@ export function AdminShell(props: {
         href: "/admin/roles",
         label: "権限管理",
         icon: <IconShield className="h-5 w-5" aria-hidden="true" />,
-      },
-      {
-        href: "/",
-        label: "ホーム",
-        icon: <IconHome className="h-5 w-5" aria-hidden="true" />,
       },
     ],
     []
