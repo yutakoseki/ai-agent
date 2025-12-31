@@ -17,6 +17,11 @@ export interface CreateUserRequest {
   password: string;
   role: UserRole;
   name?: string;
+  /**
+   * Adminのみ任意指定可能。未指定時は（API側で）セッションの tenantId が使われる。
+   * Manager/Member は指定しても無視または拒否される。
+   */
+  tenantId?: string;
 }
 
 export interface UpdateUserRequest {
@@ -28,4 +33,5 @@ export interface UpdateUserRequest {
 export interface UserListResponse {
   users: Array<User>;
   total: number;
+  nextCursor?: string;
 }

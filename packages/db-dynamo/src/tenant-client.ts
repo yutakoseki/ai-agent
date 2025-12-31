@@ -13,6 +13,23 @@ type TenantScopedKey = {
   tenantId: string;
 };
 
+function encodeCursor(key: Record<string, unknown> | undefined): string | undefined {
+  if (!key) return undefined;
+  return Buffer.from(JSON.stringify(key), "utf8").toString("base64url");
+}
+
+function decodeCursor(cursor: string | null): Record<string, unknown> | undefined {
+  if (!cursor) return undefined;
+  try {
+    const json = Buffer.from(cursor, "base64url").toString("utf8");
+    const parsed = JSON.parse(json);
+    if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getItem<T>(
   tenantId: string,
   sk: string
@@ -62,6 +79,29 @@ export async function queryByPrefix<T>(
   return (res.Items as T[] | undefined) ?? [];
 }
 
+export async function queryByPrefixPage<T>(
+  tenantId: string,
+  prefix: string,
+  opts: { limit: number; cursor?: string }
+): Promise<{ items: T[]; nextCursor?: string }> {
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `TENANT#${tenantId}`,
+        ":prefix": prefix,
+      },
+      Limit: Math.max(1, Math.min(opts.limit, 1000)),
+      ExclusiveStartKey: decodeCursor(opts.cursor ?? null) as any,
+    })
+  );
+  return {
+    items: (res.Items as T[] | undefined) ?? [],
+    nextCursor: encodeCursor(res.LastEvaluatedKey as any),
+  };
+}
+
 export async function queryGSI1<T>(
   gsi1pk: string,
   gsi1skPrefix?: string
@@ -79,6 +119,30 @@ export async function queryGSI1<T>(
     })
   );
   return (res.Items as T[] | undefined) ?? [];
+}
+
+export async function queryGSI1Page<T>(
+  gsi1pk: string,
+  opts: { limit: number; cursor?: string; gsi1skPrefix?: string }
+): Promise<{ items: T[]; nextCursor?: string }> {
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: GSI1_NAME,
+      KeyConditionExpression: opts.gsi1skPrefix
+        ? "GSI1PK = :pk AND begins_with(GSI1SK, :sk)"
+        : "GSI1PK = :pk",
+      ExpressionAttributeValues: opts.gsi1skPrefix
+        ? { ":pk": gsi1pk, ":sk": opts.gsi1skPrefix }
+        : { ":pk": gsi1pk },
+      Limit: Math.max(1, Math.min(opts.limit, 1000)),
+      ExclusiveStartKey: decodeCursor(opts.cursor ?? null) as any,
+    })
+  );
+  return {
+    items: (res.Items as T[] | undefined) ?? [],
+    nextCursor: encodeCursor(res.LastEvaluatedKey as any),
+  };
 }
 
 export async function queryGSI2<T>(

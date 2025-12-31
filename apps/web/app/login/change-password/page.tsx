@@ -1,13 +1,14 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Noto_Sans_JP, Zen_Kaku_Gothic_New } from 'next/font/google';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { PasswordChecklist } from '@/components/ui/PasswordChecklist';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
 const bodyFont = Noto_Sans_JP({
@@ -24,15 +25,18 @@ const headingFont = Zen_Kaku_Gothic_New({
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
-export default function LoginPage() {
+export default function ChangePasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const searchParams = useSearchParams();
+  const initialEmail = (searchParams?.get('email') ?? '').trim();
+
+  const [email, setEmail] = useState(initialEmail);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
 
   const statusClass = useMemo(() => {
     if (status === 'success') {
@@ -45,22 +49,20 @@ export default function LoginPage() {
   }, [status]);
 
   const isBusy = status === 'loading';
-  const isDisabled = isBusy;
-
-  function syncAutofillValues() {
-    const domEmail = (emailRef.current?.value ?? '').trim();
-    const domPassword = passwordRef.current?.value ?? '';
-    if (!email && domEmail) setEmail(domEmail);
-    if (!password && domPassword) setPassword(domPassword);
-  }
-
-  useEffect(() => {
-    // ブラウザの自動入力は onChange が発火しないことがあるため、マウント直後に同期する
-    syncAutofillValues();
-    const t = window.setTimeout(syncAutofillValues, 150);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const passwordOk = useMemo(() => {
+    const p = newPassword;
+    return (
+      p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p)
+    );
+  }, [newPassword]);
+  const isDisabled =
+    isBusy ||
+    !email ||
+    !currentPassword ||
+    !newPassword ||
+    !confirmPassword ||
+    !passwordOk ||
+    newPassword !== confirmPassword;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,23 +71,16 @@ export default function LoginPage() {
     setTraceId(null);
 
     try {
-      // オートフィルは state が更新されないことがあるため、常にフォームの実値から取得する
-      const form = event.currentTarget;
-      const formData = new FormData(form);
-      const emailValue = String(formData.get('email') ?? '').trim();
-      const passwordValue = String(formData.get('password') ?? '');
-
-      // UI の表示も合わせて同期しておく
-      setEmail(emailValue);
-      setPassword(passwordValue);
-
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: emailValue, password: passwordValue }),
+        body: JSON.stringify({
+          email,
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -94,15 +89,17 @@ export default function LoginPage() {
 
       if (!response.ok) {
         setStatus('error');
-        setMessage(data?.message || 'ログインに失敗しました。入力内容を確認してください。');
+        setMessage(
+          data?.message || 'パスワード変更に失敗しました。入力内容を確認してください。'
+        );
         return;
       }
 
       setStatus('success');
-      setMessage('ログインに成功しました。セッションが作成されました。');
-      const role = data?.user?.role;
-      const destination = role === 'Admin' ? '/admin/roles' : '/';
-      router.replace(destination);
+      setMessage(data?.message || 'パスワードを変更しました。');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch {
       setStatus('error');
       setMessage('通信に失敗しました。ネットワークを確認してください。');
@@ -135,8 +132,11 @@ export default function LoginPage() {
 
           <div className="space-y-3">
             <h1 className="font-heading text-[clamp(28px,4vw,42px)] font-semibold leading-tight">
-              AI Agent Platform
+              パスワード変更
             </h1>
+            <p className="text-sm text-ink-muted">
+              現在のパスワードを確認して、新しいパスワードへ変更します。
+            </p>
           </div>
         </section>
 
@@ -144,9 +144,9 @@ export default function LoginPage() {
           <Card className="rounded-3xl border-ink/10 bg-surface/90 shadow-panel" padded={false}>
             <div className="p-8">
               <div className="mb-6 space-y-2">
-                <h2 className="text-xl font-heading font-semibold">サインイン</h2>
+                <h2 className="text-xl font-heading font-semibold">入力</h2>
                 <p className="text-sm text-ink-muted">
-                  メールアドレスとパスワードを入力してください。
+                  メールアドレス、現在のパスワード、新しいパスワードを入力してください。
                 </p>
               </div>
 
@@ -159,29 +159,59 @@ export default function LoginPage() {
                   placeholder="admin@example.com"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  onFocus={syncAutofillValues}
-                  ref={emailRef}
                   className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+                  required
                 />
                 <PasswordInput
-                  name="password"
-                  label="パスワード"
+                  name="currentPassword"
+                  label="現在のパスワード"
                   autoComplete="current-password"
                   placeholder="********"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  onFocus={syncAutofillValues}
-                  ref={passwordRef}
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
                   className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+                  required
+                />
+                <PasswordInput
+                  name="newPassword"
+                  label="新しいパスワード"
+                  autoComplete="new-password"
+                  placeholder="********"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+                  required
+                />
+                <PasswordChecklist password={newPassword} confirmPassword={confirmPassword} />
+                <PasswordInput
+                  name="confirmPassword"
+                  label="新しいパスワード（確認）"
+                  autoComplete="new-password"
+                  placeholder="********"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+                  required
                 />
 
-                <Button
-                  className="h-11 w-full rounded-xl shadow-brand"
-                  type="submit"
-                  disabled={isDisabled}
-                >
-                  {isBusy ? 'ログイン中...' : 'ログイン'}
-                </Button>
+                <div className="grid gap-3">
+                  <Button
+                    className="h-11 w-full rounded-xl shadow-brand"
+                    type="submit"
+                    disabled={isDisabled}
+                  >
+                    {isBusy ? '変更中...' : 'パスワードを変更'}
+                  </Button>
+                  <Button
+                    className="h-11 w-full rounded-xl"
+                    type="button"
+                    variant="secondary"
+                    disabled={isBusy}
+                    onClick={() => router.push('/login')}
+                  >
+                    ログイン画面へ戻る
+                  </Button>
+                </div>
               </form>
 
               <div
@@ -189,46 +219,16 @@ export default function LoginPage() {
                 role="status"
                 aria-live="polite"
               >
-                {message ?? 'ログイン情報を入力してください。'}
+                {message ?? '入力して「パスワードを変更」を押してください。'}
                 {traceId ? (
                   <span className="mt-1 block text-xs text-ink-soft">トレースID: {traceId}</span>
                 ) : null}
               </div>
-
-              <div className="mt-6 grid gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="h-10 w-full rounded-xl"
-                  onClick={() => router.push('/tenant/apply')}
-                  disabled={isBusy}
-                >
-                  テナント申請へ
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="h-10 w-full rounded-xl"
-                  onClick={() => {
-                    const next = email.trim()
-                      ? `/login/change-password?email=${encodeURIComponent(email.trim())}`
-                      : "/login/change-password";
-                    router.push(next);
-                  }}
-                  disabled={isBusy}
-                >
-                  パスワード変更
-                </Button>
-              </div>
             </div>
           </Card>
-
-          <p className="text-center text-xs text-ink-soft md:text-left">
-            ログインできない場合は管理者に連絡してください。
-          </p>
         </div>
       </div>
     </main>
   );
 }
+

@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import type { Session } from "@shared/auth";
 import { getSession } from "@/lib/auth/session";
 import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
+import { sendUserCreatedEmail } from "@/lib/notifications/userCreatedEmails";
 
 // セッション取得のモック
 vi.mock("@/lib/auth/session");
@@ -13,6 +14,8 @@ const mockGetSession = vi.mocked(getSession);
 vi.mock("@/lib/auth/cognito");
 const mockCreateCognitoUser = vi.mocked(createCognitoUser);
 const mockDeleteCognitoUser = vi.mocked(deleteCognitoUser);
+vi.mock("@/lib/notifications/userCreatedEmails");
+const mockSendUserCreatedEmail = vi.mocked(sendUserCreatedEmail);
 
 const adminSession: Session = {
   userId: "user-1",
@@ -72,6 +75,10 @@ describe("GET /api/users", () => {
 });
 
 describe("POST /api/users", () => {
+  beforeEach(() => {
+    mockSendUserCreatedEmail.mockResolvedValue();
+  });
+
   it("Admin権限でユーザーを作成できる", async () => {
     const request = new NextRequest("http://localhost:3000/api/users", {
       method: "POST",
@@ -92,6 +99,29 @@ describe("POST /api/users", () => {
     expect(data.role).toBe("Member");
     expect(data.name).toBe("新しいユーザー");
     expect(data.tenantId).toBe("tenant-1");
+    expect(mockSendUserCreatedEmail).toHaveBeenCalled();
+  });
+
+  it("Adminは作成先テナントを指定できる", async () => {
+    const request = new NextRequest("http://localhost:3000/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        tenantId: "tenant-2",
+        email: "newuser2@example.com",
+        password: "NewUser1234",
+        role: "Member",
+        name: "新しいユーザー2",
+      }),
+      headers,
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.email).toBe("newuser2@example.com");
+    expect(data.tenantId).toBe("tenant-2");
+    expect(mockSendUserCreatedEmail).toHaveBeenCalled();
   });
 
   it("必須項目が不足している場合はエラー", async () => {
@@ -135,6 +165,7 @@ describe("POST /api/users - Manager権限", () => {
   beforeEach(() => {
     // Managerセッションに変更
     mockGetSession.mockResolvedValue(managerSession);
+    mockSendUserCreatedEmail.mockResolvedValue();
   });
 
   it("ManagerはMemberを作成できる", async () => {
@@ -151,6 +182,26 @@ describe("POST /api/users - Manager権限", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(201);
+    expect(mockSendUserCreatedEmail).toHaveBeenCalled();
+  });
+
+  it("Managerは他テナントにユーザーを作成できない", async () => {
+    const request = new NextRequest("http://localhost:3000/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        tenantId: "tenant-2",
+        email: "member2@example.com",
+        password: "Member1234",
+        role: "Member",
+      }),
+      headers,
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.code).toBe("FORBIDDEN");
   });
 
   it("ManagerはAdminを作成できない", async () => {

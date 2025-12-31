@@ -1,58 +1,58 @@
 'use client';
 
-import { useMemo, useState } from "react";
-import type { UserRole } from "@shared/auth";
-import type { User } from "@shared/user";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { useMemo, useState } from 'react';
+import type { UserRole } from '@shared/auth';
+import type { User } from '@shared/user';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 
-type Status = "idle" | "loading" | "success" | "error";
+type Status = 'idle' | 'loading' | 'success' | 'error';
 
 type Props = {
   initialUser: User;
   session: { userId: string; role: UserRole; tenantId: string };
 };
 
-const allRoles: UserRole[] = ["Admin", "Manager", "Member"];
+const allRoles: UserRole[] = ['Admin', 'Manager', 'Member'];
 
 export function UserDetailClient({ initialUser, session }: Props) {
   const [user, setUser] = useState(initialUser);
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
 
-  const [editName, setEditName] = useState(user.name ?? "");
+  const [editName, setEditName] = useState(user.name ?? '');
   const [editEmail, setEditEmail] = useState(user.email);
   const [editRole, setEditRole] = useState<UserRole>(user.role);
-  const [moveTenantId, setMoveTenantId] = useState("");
+  const [moveTenantId, setMoveTenantId] = useState('');
 
-  const isBusy = status === "loading";
-  const isAdmin = session.role === "Admin";
+  const isBusy = status === 'loading';
+  const isAdmin = session.role === 'Admin';
   const isSelf = session.userId === user.id;
 
   const canEditRole = isAdmin; // role変更はAdminのみ
   const canEditProfile = isAdmin || isSelf; // name/email は Admin か本人のみ（必要ならManagerも拡張）
 
   const statusClass = useMemo(() => {
-    if (status === "success") return "border-primary/40 bg-primary/10 text-primary";
-    if (status === "error") return "border-accent/40 bg-accent/10 text-accent";
-    return "border-ink/10 bg-surface-raised/80 text-ink-soft";
+    if (status === 'success') return 'border-primary/40 bg-primary/10 text-primary';
+    if (status === 'error') return 'border-accent/40 bg-accent/10 text-accent';
+    return 'border-ink/10 bg-surface-raised/80 text-ink-soft';
   }, [status]);
 
   const hasChanges =
-    editName !== (user.name ?? "") || editEmail !== user.email || editRole !== user.role;
+    editName !== (user.name ?? '') || editEmail !== user.email || editRole !== user.role;
 
   async function save() {
-    setStatus("loading");
+    setStatus('loading');
     setMessage(null);
     setTraceId(null);
 
     try {
       const res = await fetch(`/api/users/${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name: canEditProfile ? editName : undefined,
           email: canEditProfile ? editEmail : undefined,
@@ -61,58 +61,58 @@ export function UserDetailClient({ initialUser, session }: Props) {
       });
 
       const data = await res.json().catch(() => ({}));
-      setTraceId(data?.traceId || res.headers.get("X-Trace-Id"));
+      setTraceId(data?.traceId || res.headers.get('X-Trace-Id'));
 
       if (!res.ok) {
-        setStatus("error");
-        setMessage(data?.message ?? "更新に失敗しました");
+        setStatus('error');
+        setMessage(data?.message ?? '更新に失敗しました');
         return;
       }
 
       setUser(data);
-      setEditName(data.name ?? "");
+      setEditName(data.name ?? '');
       setEditEmail(data.email);
       setEditRole(data.role);
-      setStatus("success");
-      setMessage("更新しました");
+      setStatus('success');
+      setMessage('更新しました');
     } catch {
-      setStatus("error");
-      setMessage("通信に失敗しました");
+      setStatus('error');
+      setMessage('通信に失敗しました');
     }
   }
 
   async function moveTenant() {
-    setStatus("loading");
+    setStatus('loading');
     setMessage(null);
     setTraceId(null);
 
     try {
       const res = await fetch(`/api/users/${user.id}/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ tenantId: moveTenantId }),
       });
 
       const data = await res.json().catch(() => ({}));
-      setTraceId(data?.traceId || res.headers.get("X-Trace-Id"));
+      setTraceId(data?.traceId || res.headers.get('X-Trace-Id'));
 
       if (!res.ok) {
-        setStatus("error");
-        setMessage(data?.message ?? "テナント移動に失敗しました");
+        setStatus('error');
+        setMessage(data?.message ?? 'テナント移動に失敗しました');
         return;
       }
 
       setUser(data);
-      setEditName(data.name ?? "");
+      setEditName(data.name ?? '');
       setEditEmail(data.email);
       setEditRole(data.role);
-      setMoveTenantId("");
-      setStatus("success");
-      setMessage("テナントを移動しました");
+      setMoveTenantId('');
+      setStatus('success');
+      setMessage('テナントを移動しました');
     } catch {
-      setStatus("error");
-      setMessage("通信に失敗しました");
+      setStatus('error');
+      setMessage('通信に失敗しました');
     }
   }
 
@@ -176,18 +176,21 @@ export function UserDetailClient({ initialUser, session }: Props) {
             disabled={!hasChanges || isBusy || (!canEditRole && !canEditProfile)}
             onClick={save}
           >
-            {isBusy ? "更新中..." : "更新"}
+            {isBusy ? '更新中...' : '更新'}
           </Button>
 
           <div className={`rounded-lg border px-4 py-3 text-sm ${statusClass}`}>
-            <p>{message ?? "変更して「更新」を押してください。"}</p>
+            <p>{message ?? '変更して「更新」を押してください。'}</p>
             {traceId ? <p className="mt-1 text-xs opacity-90">traceId: {traceId}</p> : null}
           </div>
         </div>
       </Card>
 
       {isAdmin ? (
-        <Card title="テナント移動（Admin）" className="border border-ink/10 bg-surface/90 lg:col-span-2">
+        <Card
+          title="テナント移動（Admin）"
+          className="border border-ink/10 bg-surface/90 lg:col-span-2"
+        >
           <div className="grid gap-3">
             <p className="text-sm text-ink-muted">
               ユーザーを別テナントに移動します（DB上で作り直し＋旧データ削除）。
@@ -206,7 +209,7 @@ export function UserDetailClient({ initialUser, session }: Props) {
                 disabled={isBusy || !moveTenantId.trim() || moveTenantId.trim() === user.tenantId}
                 onClick={moveTenant}
               >
-                {isBusy ? "移動中..." : "移動"}
+                {isBusy ? '移動中...' : '移動'}
               </Button>
             </div>
           </div>
@@ -215,5 +218,3 @@ export function UserDetailClient({ initialUser, session }: Props) {
     </section>
   );
 }
-
-

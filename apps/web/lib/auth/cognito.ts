@@ -156,6 +156,25 @@ function mapCognitoProvisionError(error: unknown): AppError {
   return new AppError('INTERNAL_ERROR', 'ユーザー作成に失敗しました');
 }
 
+function mapCognitoPasswordSetError(error: unknown): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'name' in error) {
+    const name = String((error as { name?: string }).name);
+    if (name === 'UserNotFoundException') {
+      return new AppError('NOT_FOUND', 'ユーザーが見つかりません');
+    }
+    if (name === 'InvalidPasswordException') {
+      return new AppError('BAD_REQUEST', 'パスワードが要件を満たしていません');
+    }
+    if (name === 'InvalidParameterException') {
+      return new AppError('BAD_REQUEST', '入力内容が正しくありません');
+    }
+  }
+  return new AppError('INTERNAL_ERROR', 'パスワード更新に失敗しました');
+}
+
 export async function loginWithCognito(username: string, password: string): Promise<CognitoTokens> {
   const config = getConfig();
   const client = getClient(config.region);
@@ -266,6 +285,24 @@ export async function createCognitoUser(
       }
     }
     throw mapCognitoProvisionError(error);
+  }
+}
+
+export async function setCognitoUserPassword(email: string, password: string): Promise<void> {
+  const config = getConfig();
+  const client = getClient(config.region);
+
+  try {
+    await client.send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: config.userPoolId,
+        Username: email,
+        Password: password,
+        Permanent: true,
+      })
+    );
+  } catch (error) {
+    throw mapCognitoPasswordSetError(error);
   }
 }
 

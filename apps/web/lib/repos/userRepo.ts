@@ -3,8 +3,10 @@ import type { CreateUserRequest, User } from "@shared/user";
 import {
   putItem,
   queryByPrefix,
+  queryByPrefixPage,
   getItem,
   queryGSI1,
+  queryGSI1Page,
   queryGSI2,
   transactWrite,
   updateItem,
@@ -20,6 +22,79 @@ export async function listAllUsers(): Promise<User[]> {
   // NOTE: GSI1PK="USER" で全テナントのユーザーを横断取得
   const items = await queryGSI1<UserItem>("USER");
   return items.map(mapUser);
+}
+
+export async function listUsersPage(
+  tenantId: string,
+  opts: { limit: number; cursor?: string }
+): Promise<{ users: User[]; nextCursor?: string }> {
+  const page = await queryByPrefixPage<UserItem>(tenantId, "USER#", opts);
+  return { users: page.items.map(mapUser), nextCursor: page.nextCursor };
+}
+
+export async function listAllUsersPage(opts: {
+  limit: number;
+  cursor?: string;
+}): Promise<{ users: User[]; nextCursor?: string }> {
+  const page = await queryGSI1Page<UserItem>("USER", opts);
+  return { users: page.items.map(mapUser), nextCursor: page.nextCursor };
+}
+
+function normalizeQuery(q: string | undefined | null): string {
+  return (q ?? "").trim().toLowerCase();
+}
+
+function matchesUserQuery(user: UserItem, q: string): boolean {
+  if (!q) return true;
+  const name = (user.name ?? "").toLowerCase();
+  const email = (user.email ?? "").toLowerCase();
+  return name.includes(q) || email.includes(q);
+}
+
+/**
+ * ページングしながら検索（name/email 部分一致）を行う。
+ * - q が空なら通常のページング一覧
+ * - q がある場合は「DB全体（対象スコープ全体）」を順に走査して一致を集める
+ */
+export async function searchUsersPage(opts: {
+  tenantId?: string; // 指定時: テナント内検索 / 未指定: 全テナント検索（GSI1）
+  q?: string;
+  limit: number;
+  cursor?: string;
+}): Promise<{ users: User[]; nextCursor?: string }> {
+  const limit = Math.max(1, Math.min(opts.limit, 20));
+  const q = normalizeQuery(opts.q);
+
+  // q が空なら、普通に1ページ返すだけ（高速）
+  if (!q) {
+    if (opts.tenantId) return listUsersPage(opts.tenantId, { limit, cursor: opts.cursor });
+    return listAllUsersPage({ limit, cursor: opts.cursor });
+  }
+
+  const users: User[] = [];
+  let cursor = opts.cursor;
+
+  while (users.length < limit) {
+    const remaining = limit - users.length;
+
+    const page = opts.tenantId
+      ? await queryByPrefixPage<UserItem>(opts.tenantId, "USER#", {
+          limit: remaining,
+          cursor,
+        })
+      : await queryGSI1Page<UserItem>("USER", { limit: remaining, cursor });
+
+    for (const item of page.items) {
+      if (matchesUserQuery(item, q)) {
+        users.push(mapUser(item));
+      }
+    }
+
+    cursor = page.nextCursor;
+    if (!cursor) break;
+  }
+
+  return { users, nextCursor: cursor };
 }
 
 export async function createUser(
@@ -178,6 +253,23 @@ export async function updateUser(
     throw new Error("User not found after update");
   }
   return mapUser(updated);
+}
+
+export async function updateUserPasswordHash(
+  tenantId: string,
+  userId: string,
+  passwordHash: string
+): Promise<void> {
+  const now = new Date().toISOString();
+  await updateItem(
+    tenantId,
+    `USER#${userId}`,
+    "SET passwordHash = :passwordHash, updatedAt = :updatedAt",
+    {
+      ":passwordHash": passwordHash,
+      ":updatedAt": now,
+    }
+  );
 }
 
 function mapUser(item: UserItem): User {

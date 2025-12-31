@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 
 type NavItem = {
@@ -75,7 +75,9 @@ export function AdminShell(props: {
   role: string;
 }) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false); // デフォルト: アイコンのみ
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const navItems: NavItem[] = useMemo(
     () => [
@@ -100,6 +102,22 @@ export function AdminShell(props: {
 
   const sidebarWidth = expanded ? "w-60" : "w-16";
   const contentPadding = expanded ? "pl-60" : "pl-16";
+
+  async function logout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      // cookie削除はサーバー側で行う。成功/失敗に関わらずログイン画面へ。
+      router.replace("/login");
+      router.refresh();
+      setIsLoggingOut(false);
+    }
+  }
 
   return (
     <div className="min-h-[100svh] bg-secondary text-ink">
@@ -163,6 +181,25 @@ export function AdminShell(props: {
           </nav>
 
           <div className="border-t border-ink/10 p-2">
+            <button
+              type="button"
+              className={clsx(
+                "mb-2 flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-sm",
+                "transition-colors",
+                "border-ink/10 bg-surface-raised/60 text-ink hover:bg-surface-raised",
+                "disabled:cursor-not-allowed disabled:opacity-60"
+              )}
+              onClick={logout}
+              disabled={isLoggingOut}
+              aria-label="ログアウト"
+              title={!expanded ? "ログアウト" : undefined}
+            >
+              <span className="grid h-6 w-6 place-items-center" aria-hidden="true">
+                ⇦
+              </span>
+              {expanded ? <span className="min-w-0 truncate">ログアウト</span> : null}
+            </button>
+
             <div
               className={clsx(
                 "rounded-xl border border-ink/10 bg-surface-raised/60 px-3 py-2 text-xs text-ink-soft",
