@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Noto_Sans_JP, Zen_Kaku_Gothic_New } from 'next/font/google';
 
@@ -25,7 +25,21 @@ const headingFont = Zen_Kaku_Gothic_New({
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
-export default function ChangePasswordPage() {
+function ChangePasswordFormFallback() {
+  return (
+    <Card className="rounded-3xl border-ink/10 bg-surface/90 shadow-panel" padded={false}>
+      <div className="p-8">
+        <div className="mb-6 space-y-2">
+          <h2 className="text-xl font-heading font-semibold">入力</h2>
+          <p className="text-sm text-ink-muted">読み込み中...</p>
+        </div>
+        <div className="h-44 rounded-2xl border border-ink/10 bg-surface-raised/60" />
+      </div>
+    </Card>
+  );
+}
+
+function ChangePasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialEmail = (searchParams?.get('email') ?? '').trim();
@@ -107,6 +121,96 @@ export default function ChangePasswordPage() {
   }
 
   return (
+    <Card className="rounded-3xl border-ink/10 bg-surface/90 shadow-panel" padded={false}>
+      <div className="p-8">
+        <div className="mb-6 space-y-2">
+          <h2 className="text-xl font-heading font-semibold">入力</h2>
+          <p className="text-sm text-ink-muted">
+            メールアドレス、現在のパスワード、新しいパスワードを入力してください。
+          </p>
+        </div>
+
+        <form className="grid gap-5" onSubmit={handleSubmit}>
+          <Input
+            name="email"
+            label="メールアドレス"
+            type="email"
+            autoComplete="email"
+            placeholder="admin@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+            required
+          />
+          <PasswordInput
+            name="currentPassword"
+            label="現在のパスワード"
+            autoComplete="current-password"
+            placeholder="********"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+            required
+          />
+          <PasswordInput
+            name="newPassword"
+            label="新しいパスワード"
+            autoComplete="new-password"
+            placeholder="********"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+            required
+          />
+          <PasswordChecklist password={newPassword} confirmPassword={confirmPassword} />
+          <PasswordInput
+            name="confirmPassword"
+            label="新しいパスワード（確認）"
+            autoComplete="new-password"
+            placeholder="********"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
+            required
+          />
+
+          <div className="grid gap-3">
+            <Button
+              className="h-11 w-full rounded-xl shadow-brand"
+              type="submit"
+              disabled={isDisabled}
+            >
+              {isBusy ? '変更中...' : 'パスワードを変更'}
+            </Button>
+            <Button
+              className="h-11 w-full rounded-xl"
+              type="button"
+              variant="secondary"
+              disabled={isBusy}
+              onClick={() => router.push('/login')}
+            >
+              ログイン画面へ戻る
+            </Button>
+          </div>
+        </form>
+
+        <div
+          className={`mt-5 min-h-[44px] rounded-xl border px-3 py-2 text-sm leading-relaxed ${statusClass}`}
+          role="status"
+          aria-live="polite"
+        >
+          {message ?? '入力して「パスワードを変更」を押してください。'}
+          {traceId ? (
+            <span className="mt-1 block text-xs text-ink-soft">トレースID: {traceId}</span>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export default function ChangePasswordPage() {
+  return (
     <main
       className={[
         'relative min-h-[100svh] bg-secondary bg-auth-shell font-body text-ink',
@@ -141,94 +245,11 @@ export default function ChangePasswordPage() {
         </section>
 
         <div className="grid gap-4">
-          <Card className="rounded-3xl border-ink/10 bg-surface/90 shadow-panel" padded={false}>
-            <div className="p-8">
-              <div className="mb-6 space-y-2">
-                <h2 className="text-xl font-heading font-semibold">入力</h2>
-                <p className="text-sm text-ink-muted">
-                  メールアドレス、現在のパスワード、新しいパスワードを入力してください。
-                </p>
-              </div>
-
-              <form className="grid gap-5" onSubmit={handleSubmit}>
-                <Input
-                  name="email"
-                  label="メールアドレス"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="admin@example.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
-                  required
-                />
-                <PasswordInput
-                  name="currentPassword"
-                  label="現在のパスワード"
-                  autoComplete="current-password"
-                  placeholder="********"
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                  className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
-                  required
-                />
-                <PasswordInput
-                  name="newPassword"
-                  label="新しいパスワード"
-                  autoComplete="new-password"
-                  placeholder="********"
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
-                  required
-                />
-                <PasswordChecklist password={newPassword} confirmPassword={confirmPassword} />
-                <PasswordInput
-                  name="confirmPassword"
-                  label="新しいパスワード（確認）"
-                  autoComplete="new-password"
-                  placeholder="********"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="h-11 rounded-xl border-ink/10 bg-surface-raised/80"
-                  required
-                />
-
-                <div className="grid gap-3">
-                  <Button
-                    className="h-11 w-full rounded-xl shadow-brand"
-                    type="submit"
-                    disabled={isDisabled}
-                  >
-                    {isBusy ? '変更中...' : 'パスワードを変更'}
-                  </Button>
-                  <Button
-                    className="h-11 w-full rounded-xl"
-                    type="button"
-                    variant="secondary"
-                    disabled={isBusy}
-                    onClick={() => router.push('/login')}
-                  >
-                    ログイン画面へ戻る
-                  </Button>
-                </div>
-              </form>
-
-              <div
-                className={`mt-5 min-h-[44px] rounded-xl border px-3 py-2 text-sm leading-relaxed ${statusClass}`}
-                role="status"
-                aria-live="polite"
-              >
-                {message ?? '入力して「パスワードを変更」を押してください。'}
-                {traceId ? (
-                  <span className="mt-1 block text-xs text-ink-soft">トレースID: {traceId}</span>
-                ) : null}
-              </div>
-            </div>
-          </Card>
+          <Suspense fallback={<ChangePasswordFormFallback />}>
+            <ChangePasswordForm />
+          </Suspense>
         </div>
       </div>
     </main>
   );
 }
-
