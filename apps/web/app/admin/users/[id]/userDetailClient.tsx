@@ -6,6 +6,7 @@ import type { UserRole } from '@shared/auth';
 import type { User } from '@shared/user';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -23,6 +24,7 @@ export function UserDetailClient({ initialUser, session }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [editName, setEditName] = useState(user.name ?? '');
   const [editEmail, setEditEmail] = useState(user.email);
@@ -125,11 +127,10 @@ export function UserDetailClient({ initialUser, session }: Props) {
       setMessage('自分自身を削除することはできません');
       return;
     }
-    const ok = window.confirm(
-      `ユーザーを削除します。\n\n対象: ${user.email}\nユーザーID: ${user.id}\n\nこの操作は取り消せません。続行しますか？`
-    );
-    if (!ok) return;
+    setDeleteOpen(true);
+  }
 
+  async function confirmRemoveUser() {
     setStatus('loading');
     setMessage(null);
     setTraceId(null);
@@ -155,11 +156,61 @@ export function UserDetailClient({ initialUser, session }: Props) {
     } catch {
       setStatus('error');
       setMessage('通信に失敗しました');
+    } finally {
+      setDeleteOpen(false);
     }
   }
 
   return (
     <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <Dialog
+        open={deleteOpen}
+        title="ユーザー削除の確認"
+        onClose={() => {
+          if (!isBusy) setDeleteOpen(false);
+        }}
+        actions={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isBusy}
+            onClick={() => setDeleteOpen(false)}
+          >
+            閉じる
+          </Button>
+        }
+      >
+        <div className="space-y-4 text-sm text-ink">
+          <p className="text-ink-muted">
+            この操作は取り消せません。削除するとログインできなくなります。
+          </p>
+          <dl className="grid gap-2 rounded-lg border border-ink/10 bg-secondary/40 p-3">
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-soft">対象</dt>
+              <dd className="font-mono text-xs">{user.email}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-soft">ユーザーID</dt>
+              <dd className="font-mono text-xs">{user.id}</dd>
+            </div>
+          </dl>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isBusy}
+              onClick={() => setDeleteOpen(false)}
+            >
+              キャンセル
+            </Button>
+            <Button type="button" variant="danger" disabled={isBusy} onClick={confirmRemoveUser}>
+              {isBusy ? '削除中...' : '削除する'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
       <Card title="ユーザー情報" className="border border-ink/10 bg-surface/90">
         <dl className="grid gap-3 text-sm text-ink">
           <div className="grid gap-1">

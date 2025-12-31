@@ -9,6 +9,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: React.ReactNode;
+  allowedRoles?: string[]; // 指定時: このロールのときのみ表示
 };
 
 function IconMenu(props: React.SVGProps<SVGSVGElement>) {
@@ -79,8 +80,8 @@ export function AdminShell(props: {
   const [expanded, setExpanded] = useState(false); // デフォルト: アイコンのみ
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const navItems: NavItem[] = useMemo(
-    () => [
+  const navItems: NavItem[] = useMemo(() => {
+    const items: NavItem[] = [
       {
         href: "/",
         label: "ホーム",
@@ -90,15 +91,20 @@ export function AdminShell(props: {
         href: "/admin/tenant-applications",
         label: "テナント申請",
         icon: <IconInbox className="h-5 w-5" aria-hidden="true" />,
+        allowedRoles: ["Admin"],
       },
       {
         href: "/admin/roles",
         label: "権限管理",
         icon: <IconShield className="h-5 w-5" aria-hidden="true" />,
       },
-    ],
-    []
-  );
+    ];
+
+    return items.filter((item) => {
+      if (!item.allowedRoles) return true;
+      return item.allowedRoles.includes(props.role);
+    });
+  }, [props.role]);
 
   const sidebarWidth = expanded ? "w-60" : "w-16";
   const contentPadding = expanded ? "pl-60" : "pl-16";
