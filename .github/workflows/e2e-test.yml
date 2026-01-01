@@ -81,7 +81,8 @@ jobs:
           # 最大 10 分待つ（5秒 * 120回）
           max_attempts=120
           for i in $(seq 1 "$max_attempts"); do
-            status="$(curl -s -o /tmp/page.html -w '%{http_code}' --max-time 20 "$url" || true)"
+            # / は認証等で 30x になることがあるため、リダイレクト追従して最終ページを確認する
+            status="$(curl -s -L --max-redirs 10 -o /tmp/page.html -w '%{http_code}' --max-time 20 "$url" || true)"
             body="$(head -c 20000 /tmp/page.html 2>/dev/null || true)"
 
             if [[ "$status" == "200" ]] && ! echo "$body" | grep -q "Your app will appear here once you complete your first deployment"; then
