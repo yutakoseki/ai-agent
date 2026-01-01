@@ -13,3 +13,4 @@ Python ベースの AgentCore 実行サービスを想定。
 - 依存管理: Poetry/uv 想定
 - デプロイ: コンテナ化してインフラ側で実行（Amplify とは別タスク/サービス）
 - 環境変数: `config/env.example` に準拠し、必ずバリデーションを行う
+

@@ -7,3 +7,4 @@
 - ライフサイクル: 30日→Glacier Instant Retrieval, 365日→Glacier Deep Archive, 2555日(7年)で削除
 - `force_destroy` はデフォルト false（dev でのみ true を推奨）
 
+

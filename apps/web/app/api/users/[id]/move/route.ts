@@ -55,3 +55,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return handleError(error, context.traceId, 'POST /api/users/:id/move');
   }
 }
+

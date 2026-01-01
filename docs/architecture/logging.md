@@ -65,3 +65,4 @@
 - `packages/config` に `LOG_LEVEL`/`LOG_PRETTY` を追加し、スキーマバリデーションを通す。
 - 共通ロガー（例: `apps/web/lib/logger.ts`）を用意し、`handleError` や API ルートが `console` ではなくロガー経由で出力する。
 - 監査ログ用の別ストリーム/テーブルを設計し、PII マスキングを必須化する。
+

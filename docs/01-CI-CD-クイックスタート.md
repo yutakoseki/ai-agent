@@ -542,6 +542,7 @@ git push origin staging
 ```
 
 #### 補足（E2Eの参照先）
+
 - `develop → staging` のPRでは、E2Eは **stagingのURLではなく**、PRのhead（= develop）のブランチURL（`https://develop.<appId>.amplifyapp.com`）を参照します。
 - そのため `AMPLIFY_APP_ID` を GitHub Secrets に設定しておく必要があります。
 
