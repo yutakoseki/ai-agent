@@ -1,20 +1,15 @@
 // テナント詳細取得・更新API
 
 import { NextRequest, NextResponse } from "next/server";
-import type { UpdateTenantRequest } from "@types/tenant";
-import { AppError } from "@types/error";
-import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
+import type { UpdateTenantRequest } from "@shared/tenant";
+import { AppError } from "@shared/error";
+import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
+import { requireCsrf } from "@/lib/middleware/csrf";
+import { findTenantById } from "@/lib/repos/tenantRepo";
+import { requirePermission } from "@/lib/auth/permissions";
 
-// TODO: DB接続後に実装
-const MOCK_TENANT = {
-  id: "tenant-1",
-  name: "サンプルテナント",
-  plan: "Pro" as const,
-  enabled: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
+export const runtime = "nodejs";
 
 // テナント詳細取得
 export async function GET(
@@ -27,15 +22,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // 自テナントまたはAdmin権限チェック
     if (context.session.role !== "Admin") {
-      const tenantError = requireTenant(context.session, id, context.traceId);
-      if (tenantError) return tenantError;
+      const perm = await requirePermission({
+        session: context.session,
+        key: "tenant.read",
+        traceId: context.traceId,
+        resourceTenantId: id,
+      });
+      if (!perm.ok) return perm.response;
     }
 
-    // TODO: DBからテナント取得
-    // const tenant = await db.tenant.findUnique({ where: { id } });
-    const tenant = id === MOCK_TENANT.id ? MOCK_TENANT : null;
+    const tenant = await findTenantById(id);
 
     if (!tenant) {
       throw new AppError("NOT_FOUND", "テナントが見つかりません");
@@ -45,7 +42,7 @@ export async function GET(
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "GET /api/tenants/:id");
   }
 }
 
@@ -58,6 +55,9 @@ export async function PATCH(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
 
     // Admin権限チェック
@@ -66,14 +66,13 @@ export async function PATCH(
 
     const body: UpdateTenantRequest = await request.json();
 
-    // TODO: DBでテナント更新
-    // const tenant = await db.tenant.update({
-    //   where: { id },
-    //   data: body
-    // });
+    const existing = await findTenantById(id);
+    if (!existing) {
+      throw new AppError("NOT_FOUND", "テナントが見つかりません");
+    }
 
     const tenant = {
-      ...MOCK_TENANT,
+      ...existing,
       ...body,
       updatedAt: new Date(),
     };
@@ -82,7 +81,7 @@ export async function PATCH(
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "PATCH /api/tenants/:id");
   }
 }
 
@@ -95,6 +94,9 @@ export async function DELETE(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
 
     // Admin権限チェック
@@ -112,6 +114,6 @@ export async function DELETE(
       { headers: { "X-Trace-Id": context.traceId } }
     );
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "DELETE /api/tenants/:id");
   }
 }

@@ -10,6 +10,10 @@ on:
       - staging
       - prod
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   e2e-test:
     name: E2E Tests
@@ -38,18 +42,68 @@ jobs:
       - name: Determine test URL
         id: url
         run: |
-          if [[ "${{ github.base_ref }}" == "main" ]] || [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
-            echo "base_url=${{ secrets.PROD_URL }}" >> $GITHUB_OUTPUT
-            echo "environment=production" >> $GITHUB_OUTPUT
-          else
-            echo "base_url=${{ secrets.STAGING_URL }}" >> $GITHUB_OUTPUT
-            echo "environment=staging" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          # PR時は staging/prod の固定URLではなく、Amplifyの「ブランチURL（プレビュー）」を叩く。
+          # 例: https://develop.<appId>.amplifyapp.com
+          #
+          # NOTE:
+          # - ブランチ名に `/` が含まれる場合、Amplify側でサブドメインが変換されることがあります。
+          #   ここでは安全側に `/` を `-` に置換します（必要に応じて運用に合わせて調整してください）。
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ -z "${{ secrets.AMPLIFY_APP_ID }}" ]]; then
+              echo "::error::Missing secret AMPLIFY_APP_ID. Set it to your Amplify appId (e.g. d3twt10pcsc29v)."
+              exit 1
+            fi
+
+            branch_raw="${{ github.head_ref }}"
+            branch_slug="${branch_raw//\//-}"
+            echo "base_url=https://${branch_slug}.${{ secrets.AMPLIFY_APP_ID }}.amplifyapp.com" >> "$GITHUB_OUTPUT"
+            echo "environment=preview" >> "$GITHUB_OUTPUT"
+            echo "branch=${branch_raw}" >> "$GITHUB_OUTPUT"
+            echo "branch_slug=${branch_slug}" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-      - name: Wait for deployment
+          # push（staging/prod）は従来通り固定URL
+          if [[ "${{ github.ref }}" == "refs/heads/prod" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "base_url=${{ secrets.PROD_URL }}" >> "$GITHUB_OUTPUT"
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "base_url=${{ secrets.STAGING_URL }}" >> "$GITHUB_OUTPUT"
+            echo "environment=staging" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Wait for URL to be ready (and not Amplify default page)
+        id: probe
         run: |
-          echo "Waiting for deployment to ${{ steps.url.outputs.environment }}..."
-          sleep 60
+          set -euo pipefail
+
+          url="${{ steps.url.outputs.base_url }}"
+          echo "Waiting for: $url"
+
+          # 最大 10 分待つ（5秒 * 120回）
+          max_attempts=120
+          for i in $(seq 1 "$max_attempts"); do
+            # / は認証等で 30x になることがあるため、リダイレクト追従して最終ページを確認する
+            status="$(curl -s -L --max-redirs 10 -o /tmp/page.html -w '%{http_code}' --max-time 20 "$url" || true)"
+            body="$(head -c 20000 /tmp/page.html 2>/dev/null || true)"
+
+            if [[ "$status" == "200" ]] && ! echo "$body" | grep -q "Your app will appear here once you complete your first deployment"; then
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "Attempt ${i}/${max_attempts}: status=${status} (not ready yet)"
+            sleep 5
+          done
+
+          echo "::error::Preview URL is not ready: ${url}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "::error::Make sure the Amplify branch '${{ steps.url.outputs.branch }}' exists and is deploying, or enable auto branch creation / PR previews."
+          fi
+          echo "::error::Last status=${status}. If the body shows 'Your app will appear here...', it's pointing to an Amplify default page."
+          exit 1
 
       - name: Run E2E tests
         run: pnpm test:e2e
@@ -58,16 +112,43 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ steps.url.outputs.environment }}
-          path: playwright-report/
+          path: apps/web/playwright-report/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Upload test videos
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-videos-${{ steps.url.outputs.environment }}
-          path: test-results/
+          path: apps/web/test-results/
           retention-days: 7
+          if-no-files-found: warn
+
+      - name: Report required status (e2e-test)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const jobStatus = process.env.JOB_STATUS;
+            const state =
+              jobStatus === 'success' ? 'success' :
+              jobStatus === 'cancelled' ? 'error' :
+              'failure';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.SHA,
+              state,
+              context: 'e2e-test',
+              description: `e2e-test: ${state}`,
+              target_url: process.env.TARGET_URL,
+            });
