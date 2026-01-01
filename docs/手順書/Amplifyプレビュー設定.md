@@ -29,13 +29,32 @@ GitHub リポジトリに以下の Secret を追加します。
 
 ### 3-1. ブランチを手動で接続（最小）
 
-Amplify Console で対象アプリを開き、Hosting からブランチ（例: `develop` や `feature/*`）を追加してビルド/デプロイできる状態にします。
+Amplify Console で対象アプリを開き、Hosting からブランチを追加してビルド/デプロイできる状態にします。
+
+- **固定ブランチ（最終的に必要）**: `develop`, `staging`, `prod`
+  - 一度 Amplify に接続してデプロイできれば、以後はそのブランチへの push をトリガに自動でビルド/デプロイされます。
+- **PRのHEADブランチ（例）**: `feature/foo`
+  - PR時E2Eの実行先は `https://<head-branch>.<appId>.amplifyapp.com` なので、E2Eを回したいブランチは Amplify 側でデプロイされている必要があります。
 
 ### 3-2. 自動でブランチを作る（おすすめ）
 
-頻繁に PR を作る場合は、Amplify の **Auto branch creation**（自動ブランチ作成）を使うと運用が楽です。
+頻繁に PR を作る場合は、Amplify の **Auto branch creation**（自動ブランチ作成 / 自動検出）を使うと運用が楽です。
 
-- 例: `feature/*` を自動でデプロイ対象にする
+#### 自動検出（Auto branch creation）とは？
+GitHub に新しいブランチが作成されたときに、Amplify がそれを自動で見つけて **「ブランチ接続 → ビルド → デプロイ」** まで行う機能です。
+
+- 自動検出が **ON** でも、**既に接続済みのブランチ（例: `staging`, `prod`）が外れるわけではありません**。
+- 逆に、パターンを広くしすぎると「意図しないブランチまで勝手にビルド/デプロイ」されるので注意してください。
+
+#### 推奨設定（安全）
+固定ブランチ（`develop`, `staging`, `prod`）は **手動で一度だけ接続**しておき、増えるブランチだけ自動検出で拾うのが王道です。
+
+- **自動検出パターン例**: `feature/*`（必要に応じて `fix/*`, `hotfix/*` なども追加）
+- **避ける（非推奨）**: `*` や `*/*` のような広すぎるパターン（全ブランチが自動デプロイされがち）
+
+> NOTE:
+> - PR #7 のように PR の HEAD が `develop` の場合、`develop` が Amplify に接続されていないと E2E が「未デプロイURL」として失敗します。
+> - `staging`/`prod` を「最終的に Amplify でデプロイする」場合でも、自動検出に入れる必要はなく、**手動で接続済み**であれば問題ありません。
 
 （画面の項目名は Amplify Console の UI 更新で多少変わりますが、概ね「Branch / Auto branch creation / patterns」周辺です）
 
