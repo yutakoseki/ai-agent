@@ -1,11 +1,30 @@
 // JWT生成・検証ユーティリティ
 
 import { SignJWT, jwtVerify } from "jose";
-import type { Session } from "@types/auth";
+import type { Session } from "@shared/auth";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "fallback-secret-for-dev-only"
 );
+
+function parseExpiresInToSeconds(input: string): number {
+  const raw = (input || "").trim();
+  if (!raw) return 15 * 60;
+  // pure number => seconds
+  if (/^\d+$/.test(raw)) return Math.max(1, Number(raw));
+
+  const match = raw.match(/^(\d+)\s*([smhd])$/i);
+  if (!match) return 15 * 60;
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+  return Math.max(1, value * (multipliers[unit] ?? 60));
+}
+
+export function getAccessTokenExpiresInSeconds(): number {
+  const expiresIn = process.env.JWT_ACCESS_EXPIRES_IN || "15m";
+  return parseExpiresInToSeconds(expiresIn);
+}
 
 export async function createAccessToken(session: Session): Promise<string> {
   const expiresIn = process.env.JWT_ACCESS_EXPIRES_IN || "15m";

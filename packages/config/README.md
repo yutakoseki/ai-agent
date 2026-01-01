@@ -3,7 +3,7 @@
 環境変数と設定のスキーマ定義をまとめる場所。
 
 ## ポリシー
-- `.env.example` にすべてのキーを列挙し、公開/非公開の境界を明確にする。
+- `config/env.example` にすべてのキーを列挙し、公開/非公開の境界を明確にする。
 - 読み込み時にスキーマバリデーション（例: zod / pydantic）を必須化。
 - ランタイムで不足・型不整合があれば起動時に fail-fast。
 
@@ -21,4 +21,3 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 ```
-

@@ -2,7 +2,7 @@
 
 このドキュメントでは、チーム開発に最適化したCI/CDセットアップの手順を説明します。
 
-> **注意**: 一人開発の場合は `01-ci-cd-quickstart-solo.md` を参照してください。
+> **注意**: 一人開発の場合は `01-CI-CD-クイックスタート.md` を参照してください。
 
 ## 概要
 
@@ -19,7 +19,7 @@
 
 ## ステップ1: GitHub Secrets 設定（5分）
 
-[`github-secrets-checklist.md`](./github-secrets-checklist.md) を参照
+[`02-GitHub-Secrets-チェックリスト.md`](./02-GitHub-Secrets-チェックリスト.md) を参照
 
 ---
 
@@ -180,6 +180,6 @@ git push origin feature/new-feature
 
 ## 参考ドキュメント
 
-- `docs/branching-strategy.md` - ブランチ戦略詳細
-- `docs/testing-guide.md` - テストガイド
+- `docs/06-ブランチ戦略リファレンス.md` - ブランチ戦略詳細
+- `docs/08-テストガイド.md` - テストガイド
 - `docs/setup-ci-cd.md` - CI/CD詳細リファレンス

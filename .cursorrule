@@ -1,5 +1,7 @@
 # 基本方針
 - すべての応答は日本語で行うこと。
+- あらかじめdocs配下のドキュメントを参照し、ドキュメントに沿った開発をおこなうこと。
+- ドキュメントがない場合は、ドキュメントを作成、更新すること。
 - 変更は最小限かつ意図を明確にし、不要な差分を避けること。
 - 既存のユーザー変更は決して巻き戻さないこと。
 
@@ -19,6 +21,7 @@
 - テナント分離や認可に関わる設定を変更する際は、影響範囲を必ず確認し明記すること。
 - 機密情報（鍵・トークン・個人情報）を書き込まないこと。見つけた場合は伏せて報告すること。
 - ログや出力に不要な機密情報を含めないこと。
+- 監査ログはアプリログと分離し、耐改ざん性のあるストレージ/専用テーブルを利用すること（WORM 相当を推奨）。
 
 # レビューと品質
 - 変更後は関連箇所の簡易確認（lint/format/testなど）を推奨し、実行の有無を報告すること。
@@ -47,8 +50,18 @@
 - アプリ/フロントエンド
   - Next.js (App Router) + TypeScript。環境変数は型付きで管理し公開/非公開境界を遵守。
   - API: Route Handler/BFFでテナントIDとRBACをミドルウェア検証。
+  - API Route Handler の `handleError` はラベル付きで呼ぶ（例: `handleError(error, traceId, "POST /api/users")`。パスパラメータは `:id` 形式）。
   - 状態管理: React Server Componentsを優先しクライアントは最小限。必要に応じ軽量ストアを使用。
   - UI文言と関数コメントは日本語で簡潔に記述する。
+  - UIデザイン: tailwindcss を正式採用し、`primary/secondary/accent/surface/ink` のデザイントークンを必ず使用する。直接カラーコード指定は禁止。ダーク（black/secondaryベース）に鮮やかなアクセントを置くフラットスタイルを維持する。
+
+# ログ/監査の運用ルール
+- DynamoDB: コアはシングルテーブル、ライフサイクル/スループットが大きいログは別テーブル（tenantId必須、ログ専用のTTL/GSIを設計）。
+- ログ出力は構造化 JSON を基本とし、`traceId`/`requestId`/`jobId`/`tenantId`/`userId`/`label` をフィールドで保持する。PII や秘密情報は出力せず、必要な場合はマスク/ハッシュする。
+- 監査ログは専用ロガー/ストリームに出力し、アプリログと混在させない。成功/失敗を問わず記録し、保持期間と改ざん耐性を確保する。
+- 環境変数: `LOG_LEVEL`（prod/stg は基本 `info`、dev は `debug`）、`LOG_PRETTY`（ローカルのみ true 推奨）、必要に応じ `LOG_SAMPLING_DEBUG`。監査系は `AUDIT_LOG_ENABLED` / `AUDIT_LOG_SINK` を明示する。
+- エラーは一度だけログし、スタックはフィールド（例: `error.stack`）へ。`traceId` を必ず付与し、多重ロギングを避ける。
+- `console` 直書きは禁止し、共通ロガーを使用する。`handleError` など既存フックもロガー経由に統一する。
 
 - AgentCore / Strands / 実行基盤
   - AgentCore: 入出力スキーマ検証、権限スコープチェック、リトライ/タイムアウト、監査ログを共通実装。
@@ -69,6 +82,13 @@
   - CIは影響範囲ベースで分割し、Node/TSとPythonのジョブを分離。SBOM/脆弱性スキャンを両言語で実施する。
   - 依存管理は Node側: pnpm/Turborepo、Python側: Poetry/uv + Docker化を標準とし、バージョンピンとロックファイルを保持する。
   - セパレートリポに切り替える場合は、仕様・スキーマ・SDKのドリフト防止策（バージョン整合性と自動チェック）を検討する。
+
+# ブランチ運用とコミット
+- 基本フローは `feature/*` → `develop` → `staging` → `prod`。`feature` から `staging/prod` への直接マージは禁止。
+- ブランチ作成元/命名: 機能は `develop` から `feature/[issue]-[name]`。緊急対応は `prod` から `hotfix/[issue]-[desc]` を切り、`prod` と `develop` 両方へマージしブランチ削除。
+- `prod`/`staging`/`develop` は直接 push せず PR 経由でマージする。
+- テスト期待値: `feature` は Lint/単体/統合を必須、E2E は `staging/prod` で実行（CI 設定と整合させる）。
+- コミットメッセージは Conventional Commits (`feat|fix|docs|refactor|test|chore` 等) に従う。
 
 - 仕様・ドキュメント
   - 機能単位で仕様書を作成し、目的・前提・入出力・エッジケース・権限/RBAC・監査要件を簡潔に記載する。
@@ -103,4 +123,3 @@
 # 例外対応
 - 不明点やリスクがある場合は、推測で進めずユーザーに確認を求めること。
 - 予期しない差分や競合を検知した場合は即座に報告し、指示を仰ぐこと。
-

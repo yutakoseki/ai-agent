@@ -1,8 +1,8 @@
 // 認証ミドルウェア
 
 import { NextRequest, NextResponse } from "next/server";
-import type { Session, UserRole } from "@types/auth";
-import { AppError } from "@types/error";
+import type { Session, UserRole } from "@shared/auth";
+import { AppError } from "@shared/error";
 import { getSession } from "../auth/session";
 import { randomUUID } from "crypto";
 

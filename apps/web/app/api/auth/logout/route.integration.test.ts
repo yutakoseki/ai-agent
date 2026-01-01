@@ -8,6 +8,9 @@ describe("POST /api/auth/logout", () => {
   it("ログアウト成功", async () => {
     const request = new NextRequest("http://localhost:3000/api/auth/logout", {
       method: "POST",
+      headers: {
+        Origin: "http://localhost:3000",
+      },
     });
 
     const response = await POST(request);
@@ -26,6 +29,9 @@ describe("POST /api/auth/logout", () => {
   it("トレースIDがレスポンスヘッダーに含まれる", async () => {
     const request = new NextRequest("http://localhost:3000/api/auth/logout", {
       method: "POST",
+      headers: {
+        Origin: "http://localhost:3000",
+      },
     });
 
     const response = await POST(request);

@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { serialize, parse } from "cookie";
-import type { Session } from "@types/auth";
+import type { Session } from "@shared/auth";
 import { verifyAccessToken } from "./jwt";
 
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "session";

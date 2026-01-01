@@ -1,9 +1,7 @@
 terraform {
   required_version = ">= 1.6.0"
 
-  backend "s3" {
-    # TODO: state 用のバケットと DynamoDB ロックテーブルを環境別に指定する
-  }
+  backend "s3" {}
 
   required_providers {
     aws = {
@@ -22,4 +20,3 @@ variable "region" {
   description = "AWS region"
   default     = "ap-northeast-1"
 }
-
