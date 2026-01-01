@@ -1,7 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 test("トップページにアクセスできる", async ({ page }) => {
-  await page.goto("/");
+  const response = await page.goto("/", { waitUntil: "domcontentloaded" });
+  // baseURL未設定/サーバー未起動などで遷移に失敗すると response が null になることがある
+  expect(response, "BASE_URL が正しく設定されておらずページにアクセスできません。").not.toBeNull();
+  expect(
+    response!.ok(),
+    `ページにアクセスできませんでした: ${response!.status()} ${response!.statusText()}`
+  ).toBeTruthy();
   await page.waitForLoadState("domcontentloaded");
 
   // 環境によっては未ログイン時に /login へリダイレクトされることがあるため、
@@ -14,15 +20,15 @@ test("トップページにアクセスできる", async ({ page }) => {
   }
 
   const currentUrl = page.url();
-  const appTitleHeading = page.getByRole("heading", {
-    name: /AI Agent Platform/i,
-  });
+  const loginTitleHeading = page.getByRole("heading", { name: /AI Agent Platform/i });
+  const loginHeading = page.getByRole("heading", { name: /サインイン/ });
+  const homeHeading = page.getByRole("heading", { name: /^ホーム$/ });
 
   if (currentUrl.includes("/login")) {
-    await expect(appTitleHeading).toBeVisible();
-    await expect(page.getByRole("heading", { name: /サインイン/ })).toBeVisible();
+    await expect(loginTitleHeading).toBeVisible({ timeout: 15000 });
+    await expect(loginHeading).toBeVisible({ timeout: 15000 });
   } else {
     // トップページが表示される場合の最低限のスモークチェック
-    await expect(appTitleHeading).toBeVisible();
+    await expect(homeHeading).toBeVisible({ timeout: 15000 });
   }
 });
