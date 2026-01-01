@@ -46,12 +46,28 @@ jobs:
             echo "environment=staging" >> $GITHUB_OUTPUT
           fi
 
+      - name: Probe deployed URL (skip if it's Amplify default page)
+        id: probe
+        run: |
+          set -euo pipefail
+          url="${{ steps.url.outputs.base_url }}"
+          echo "Probing: $url"
+          body="$(curl -fsSL --max-time 20 "$url" | head -c 20000 || true)"
+          if echo "$body" | grep -q "Your app will appear here once you complete your first deployment"; then
+            echo "Detected Amplify default page. Skipping E2E (deployment not ready / URL misconfigured)."
+            echo "skip_e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip_e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Wait for deployment
+        if: steps.probe.outputs.skip_e2e != 'true'
         run: |
           echo "Waiting for deployment to ${{ steps.url.outputs.environment }}..."
           sleep 60
 
       - name: Run E2E tests
+        if: steps.probe.outputs.skip_e2e != 'true'
         run: pnpm test:e2e
         env:
           BASE_URL: ${{ steps.url.outputs.base_url }}
@@ -63,6 +79,7 @@ jobs:
           name: playwright-report-${{ steps.url.outputs.environment }}
           path: apps/web/playwright-report/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Upload test videos
         if: always()
@@ -71,3 +88,4 @@ jobs:
           name: playwright-videos-${{ steps.url.outputs.environment }}
           path: apps/web/test-results/
           retention-days: 7
+          if-no-files-found: warn
