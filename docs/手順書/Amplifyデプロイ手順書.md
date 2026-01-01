@@ -87,6 +87,12 @@ Amplify（SSR / Web Compute）でビルドは通るのにデプロイが失敗�
 
 - [09-Amplify-Nextjs-SSR-デプロイ失敗の原因と解決.md](../09-Amplify-Nextjs-SSR-デプロイ失敗の原因と解決.md)
 
+## PR のプレビュー（E2E の実行先）
+
+PR時のE2Eは staging の固定URLではなく、Amplify の **ブランチURL（プレビュー）** を叩く前提です。
+
+- [Amplifyプレビュー設定.md](./Amplifyプレビュー設定.md)
+
 ### ログインだけが 500 になる（ローカルはOK / AmplifyはNG）
 
 `/api/auth/login` が Amplify で 500 になる場合、まず以下を確認してください。

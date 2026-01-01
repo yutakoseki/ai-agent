@@ -18,7 +18,7 @@ test("トップページにアクセスできる", async ({ page }) => {
   try {
     if (await amplifyDefaultText.isVisible({ timeout: 2000 })) {
       throw new Error(
-        "BASE_URL が AWS Amplify のデフォルトページを指しています（デプロイ未完了/URL設定ミスの可能性）。STAGING_URL/PROD_URL を確認してください。"
+        "BASE_URL が AWS Amplify のデフォルトページを指しています（デプロイ未完了/URL設定ミスの可能性）。PRの場合は Amplify のブランチURL（プレビュー）に向いているか、staging/prod の場合は STAGING_URL/PROD_URL を確認してください。"
       );
     }
   } catch {
