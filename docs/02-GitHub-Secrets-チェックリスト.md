@@ -71,6 +71,13 @@
 
 ### 環境別URL
 
+#### `AMPLIFY_APP_ID`
+```
+値: d3twt10pcsc29v（例）
+説明: PR時のE2Eで、AmplifyのブランチURL（https://<branch>.<appId>.amplifyapp.com）を組み立てるために使用
+現時点: E2EをPRゲートにするなら設定必須
+```
+
 #### `DEV_URL`
 ```
 値: https://develop.xxxxx.amplifyapp.com
@@ -122,6 +129,7 @@
 
 - [x] `TEST_JWT_SECRET`
 - [x] `TEST_DATABASE_URL`
+- [ ] `AMPLIFY_APP_ID`（PR時のE2Eを有効にする場合）
 - [ ] `AWS_ACCESS_KEY_ID`（IaC 自動反映を使う場合）
 - [ ] `AWS_SECRET_ACCESS_KEY`（IaC 自動反映を使う場合）
 - [ ] `AWS_REGION`（IaC 自動反映を使う場合）

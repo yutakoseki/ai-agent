@@ -34,3 +34,31 @@
 ## 運用メモ
 - PR 時: lint/test/sbom/terraform plan を必須。build はオプションでも可（頻度次第）。
 - prod へのマージ後: build とデプロイ（Amplify Gen2）、AgentCore コンテナビルド/プッシュをトリガ。
+
+## 現行のブランチ運用とE2Eの参照先（重要）
+
+このリポジトリでは、環境ブランチは以下の運用を前提とします。
+
+- **develop**: ローカルから直接 push して更新（ローカルhookで各種チェック）
+- **staging 以降**: 必ず GitHub 上で PR を作って更新
+
+### develop → staging のPR
+
+- **GitHub Actions**: 各種チェックを実行
+- **E2E（Playwright）**: staging のURLではなく、**PRの head ブランチ（= develop）の Amplify ブランチURL**を参照
+  - 例: `https://develop.<appId>.amplifyapp.com`
+
+### staging → prod のPR
+
+- **GitHub Actions**: 各種チェックを実行
+- **E2E（Playwright）**: **PRの head ブランチ（= staging）の Amplify ブランチURL**を参照
+  - 例: `https://staging.<appId>.amplifyapp.com`
+
+### push（staging / prod）
+
+- `staging` への push: `STAGING_URL`（Secrets）を参照
+- `prod` への push: `PROD_URL`（Secrets）を参照
+
+> NOTE:
+> - PR時に参照するブランチURLの組み立てには `AMPLIFY_APP_ID`（GitHub Secrets）が必要です。
+> - `develop / staging / prod` は Amplify 側でブランチ接続されている必要があります（Auto branch creation は必須ではありません）。

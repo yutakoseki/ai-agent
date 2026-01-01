@@ -91,7 +91,10 @@ Amplify（SSR / Web Compute）でビルドは通るのにデプロイが失敗�
 
 PR時のE2Eは staging の固定URLではなく、Amplify の **ブランチURL（プレビュー）** を叩く前提です。
 
-- [Amplifyプレビュー設定.md](./Amplifyプレビュー設定.md)
+- **PR時の参照先**: PRの head ブランチURL（例: `https://develop.<appId>.amplifyapp.com`）
+- **必須Secrets**: `AMPLIFY_APP_ID`（GitHub Actions）
+- **前提**: `develop / staging / prod` は Amplify 側でブランチ接続されていること
+  - Auto branch creation（自動検出）は必須ではありません（固定ブランチ運用なら手動接続で十分）
 
 ### ログインだけが 500 になる（ローカルはOK / AmplifyはNG）
 

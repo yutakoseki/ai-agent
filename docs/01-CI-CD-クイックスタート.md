@@ -497,6 +497,7 @@ openssl rand -base64 32
 GitHub → **Settings** → **Secrets and variables** → **Actions**
 
 ```
+AMPLIFY_APP_ID=d3twt10pcsc29v
 DEV_URL=https://develop.xxxxx.amplifyapp.com
 STAGING_URL=https://staging.xxxxx.amplifyapp.com
 PROD_URL=https://prod.xxxxx.amplifyapp.com
@@ -539,6 +540,10 @@ git push origin staging
 
 # GitHub Actions で e2e-test が実行されることを確認
 ```
+
+#### 補足（E2Eの参照先）
+- `develop → staging` のPRでは、E2Eは **stagingのURLではなく**、PRのhead（= develop）のブランチURL（`https://develop.<appId>.amplifyapp.com`）を参照します。
+- そのため `AMPLIFY_APP_ID` を GitHub Secrets に設定しておく必要があります。
 
 ---
 
