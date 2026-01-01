@@ -10,6 +10,10 @@ on:
       - staging
       - prod
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   e2e-test:
     name: E2E Tests
@@ -123,3 +127,28 @@ jobs:
           path: apps/web/test-results/
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Report required status (e2e-test)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const jobStatus = process.env.JOB_STATUS;
+            const state =
+              jobStatus === 'success' ? 'success' :
+              jobStatus === 'cancelled' ? 'error' :
+              'failure';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.SHA,
+              state,
+              context: 'e2e-test',
+              description: `e2e-test: ${state}`,
+              target_url: process.env.TARGET_URL,
+            });

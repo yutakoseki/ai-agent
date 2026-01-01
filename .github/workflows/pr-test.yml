@@ -11,6 +11,10 @@ on:
       - staging
       - prod
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   lint:
     name: Lint and Format Check
@@ -90,6 +94,31 @@ jobs:
           name: codecov-umbrella
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Report required status (unit-test)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const jobStatus = process.env.JOB_STATUS;
+            const state =
+              jobStatus === 'success' ? 'success' :
+              jobStatus === 'cancelled' ? 'error' :
+              'failure';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.SHA,
+              state,
+              context: 'unit-test',
+              description: `unit-test: ${state}`,
+              target_url: process.env.TARGET_URL,
+            });
+
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -135,6 +164,31 @@ jobs:
           DYNAMODB_ENDPOINT: http://localhost:8000
           DYNAMODB_TABLE_NAME: aiagent-dev
           AWS_REGION: ap-northeast-1
+
+      - name: Report required status (integration-test)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const jobStatus = process.env.JOB_STATUS;
+            const state =
+              jobStatus === 'success' ? 'success' :
+              jobStatus === 'cancelled' ? 'error' :
+              'failure';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.SHA,
+              state,
+              context: 'integration-test',
+              description: `integration-test: ${state}`,
+              target_url: process.env.TARGET_URL,
+            });
 
   build:
     name: Build Check
