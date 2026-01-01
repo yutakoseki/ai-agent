@@ -69,3 +69,4 @@ describe('POST /api/users/:id/move', () => {
     expect(data.tenantId).toBe('tenant-b');
   });
 });
+

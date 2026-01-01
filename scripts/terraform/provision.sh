@@ -6,12 +6,12 @@ environment="${2:-}"
 action="${3:-apply}"
 
 if [[ -z "$module" || -z "$environment" ]]; then
-  echo "Usage: $0 <dynamodb|cognito|amplify|audit_logs> <environment> [plan|apply] [extra terraform args...]"
+  echo "Usage: $0 <dynamodb|cognito|amplify|amplify_branch_roles|audit_logs> <environment> [plan|apply] [extra terraform args...]"
   exit 1
 fi
 
 case "$module" in
-  dynamodb|cognito|amplify|audit_logs) ;;
+  dynamodb|cognito|amplify|amplify_branch_roles|audit_logs) ;;
   *)
     echo "Unsupported module: $module"
     exit 1
