@@ -42,3 +42,9 @@ shift 2 || true
 ./scripts/terraform/provision.sh dynamodb "${environment}" "${action}" "$@"
 ./scripts/terraform/provision.sh cognito "${environment}" "${action}" "$@"
 ./scripts/terraform/provision.sh audit_logs "${environment}" "${action}" "$@"
+
+# Amplify branch の compute role 付与は staging/prod ブランチでのみ運用する
+# - develop ブランチは env=dev へマップされるため、branch名/既存role名が一致しない
+if [[ "${environment}" == "staging" || "${environment}" == "prod" ]]; then
+  ./scripts/terraform/provision.sh amplify_branch_roles "${environment}" "${action}" "$@"
+fi

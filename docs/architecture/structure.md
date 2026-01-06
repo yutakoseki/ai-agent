@@ -14,3 +14,4 @@
 4) AgentCore 連携方針（非同期キュー優先、同期最小）
 5) Terraform 雛形（Amplify Gen2 + 周辺）と state 分離
 6) テスト戦略（コンポーネント/E2E/疎通の最低カバレッジ）
+

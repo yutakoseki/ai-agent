@@ -148,14 +148,14 @@ run_step() {
   start_step "$label" "$command" "$rerun"
   start_time="$(date +%s)"
 
-  if "$@"; then
+  "$@"
+  exit_code="$?"
+  if [ "$exit_code" -eq 0 ]; then
     end_time="$(date +%s)"
     elapsed="$((end_time - start_time))"
     finish_step "OK   " "$label" "$elapsed"
     return 0
   fi
-
-  exit_code="$?"
   end_time="$(date +%s)"
   elapsed="$((end_time - start_time))"
   finish_step "NG   " "$label" "$elapsed" >&2
@@ -181,14 +181,15 @@ run_pytest_step() {
     return 0
   fi
 
-  if pytest services/agent-core; then
+  pytest services/agent-core
+  exit_code="$?"
+  if [ "$exit_code" -eq 0 ]; then
     end_time="$(date +%s)"
     elapsed="$((end_time - start_time))"
     finish_step "OK   " "$label" "$elapsed"
     return 0
   fi
 
-  exit_code="$?"
   if [ "$exit_code" -ne 5 ]; then
     end_time="$(date +%s)"
     elapsed="$((end_time - start_time))"
