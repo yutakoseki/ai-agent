@@ -11,3 +11,4 @@ Next.js (App Router) フロント/Route Handler 層の想定。
 - パッケージ管理: pnpm (予定)
 - lint/test: CIで影響範囲のみ実行する想定
 
+
