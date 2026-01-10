@@ -16,5 +16,8 @@ export * from "./tenantApplication";
 // ユーザー関連
 export * from "./user";
 
+// メール/タスク関連
+export * from "./mail";
+
 // エラー関連
 export * from "./error";

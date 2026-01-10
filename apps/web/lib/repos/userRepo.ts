@@ -144,7 +144,9 @@ export async function findUser(
 export async function findUserByUserId(
   userId: string
 ): Promise<User | null> {
-  const items = await queryGSI2<UserItem>(`USER#${userId}`);
+  // EmailAccount なども GSI2PK = `USER#<id>` を使うため衝突する。
+  // UserItem は GSI2SK が `TENANT#...` なので prefix で絞り込む。
+  const items = await queryGSI2<UserItem>(`USER#${userId}`, "TENANT#");
   if (items.length === 0) return null;
   return mapUser(items[0]);
 }
@@ -153,7 +155,7 @@ export async function moveUserToTenant(
   userId: string,
   destTenantId: string
 ): Promise<User> {
-  const items = await queryGSI2<UserItem>(`USER#${userId}`);
+  const items = await queryGSI2<UserItem>(`USER#${userId}`, "TENANT#");
   if (items.length === 0) {
     throw new Error("User not found");
   }
