@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const envSchema = z.object({
   NEXT_PUBLIC_API_BASE_URL: z.string().url(),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
   API_BASE_URL: z.string().url(),
   DATABASE_URL: z.string(),
   QUEUE_URL: z.string(),
@@ -38,6 +39,22 @@ export const envSchema = z.object({
   // パスワードリセット
   PASSWORD_RESET_EXPIRES_IN: z.string().default("1h"),
   PASSWORD_RESET_SECRET: z.string().min(32),
+
+  // OAuth (Gmail/Outlook)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  GMAIL_PUBSUB_TOPIC: z.string().optional(),
+  GMAIL_WEBHOOK_TOKEN: z.string().optional(),
+  GMAIL_LABEL_IDS_JSON: z.string().optional(),
+  GMAIL_WATCH_LABEL_IDS: z.string().optional(),
+  OAUTH_TOKEN_ENC_KEY: z.string().optional(),
+  OAUTH_STATE_SECRET: z.string().optional(),
+
+  // Web Push
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
 
   // ログ関連
   LOG_LEVEL: z

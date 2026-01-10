@@ -39,6 +39,22 @@ export async function GET(_req: NextRequest) {
         COGNITO_AUTH_FLOW: pickBool("COGNITO_AUTH_FLOW"),
         AMPLIFY_AWS_REGION: pickBool("AMPLIFY_AWS_REGION"),
         AWS_REGION: pickBool("AWS_REGION"),
+        // Gmail / PubSub
+        GOOGLE_CLIENT_ID: pickBool("GOOGLE_CLIENT_ID"),
+        GOOGLE_CLIENT_SECRET: pickBool("GOOGLE_CLIENT_SECRET"),
+        GOOGLE_REDIRECT_URI: pickBool("GOOGLE_REDIRECT_URI"),
+        GMAIL_PUBSUB_TOPIC: pickBool("GMAIL_PUBSUB_TOPIC"),
+        GMAIL_WEBHOOK_TOKEN: pickBool("GMAIL_WEBHOOK_TOKEN"),
+        OAUTH_TOKEN_ENC_KEY: pickBool("OAUTH_TOKEN_ENC_KEY"),
+        OAUTH_STATE_SECRET: pickBool("OAUTH_STATE_SECRET"),
+        // Push
+        VAPID_PUBLIC_KEY: pickBool("VAPID_PUBLIC_KEY"),
+        VAPID_PRIVATE_KEY: pickBool("VAPID_PRIVATE_KEY"),
+        VAPID_SUBJECT: pickBool("VAPID_SUBJECT"),
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: pickBool("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
+        // AI
+        OPENAI_API_KEY: pickBool("OPENAI_API_KEY"),
+        OPENAI_MODEL: pickBool("OPENAI_MODEL"),
       },
       // 直接参照（ビルド時埋め込みが効いているか）の確認用
       envDirect: {

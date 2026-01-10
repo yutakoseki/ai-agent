@@ -39,6 +39,44 @@ function IconInbox(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconMail(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 6h16v12H4V6z"
+      />
+      <path
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 7l8 6 8-6"
+      />
+    </svg>
+  );
+}
+
+function IconTasks(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 11l3 3 5-6"
+      />
+      <path
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 7h3M4 12h3M4 17h3"
+      />
+    </svg>
+  );
+}
+
 function IconShield(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
@@ -86,6 +124,21 @@ export function AdminShell(props: {
         href: "/",
         label: "ホーム",
         icon: <IconHome className="h-5 w-5" aria-hidden="true" />,
+      },
+      {
+        href: "/mail-agent",
+        label: "メールエージェント",
+        icon: <IconMail className="h-5 w-5" aria-hidden="true" />,
+      },
+      {
+        href: "/tasks",
+        label: "タスク",
+        icon: <IconTasks className="h-5 w-5" aria-hidden="true" />,
+      },
+      {
+        href: "/settings",
+        label: "設定",
+        icon: <IconInbox className="h-5 w-5" aria-hidden="true" />,
       },
       {
         href: "/admin/tenant-applications",
@@ -232,5 +285,4 @@ export function AdminShell(props: {
     </div>
   );
 }
-
 

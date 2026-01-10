@@ -9,6 +9,26 @@ const SECRET_ACCESS_KEY =
 const SESSION_TOKEN = process.env.AMPLIFY_AWS_SESSION_TOKEN || process.env.AWS_SESSION_TOKEN;
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'aiagent-dev';
 
+const MULTI_TABLE_SUFFIXES = [
+  'tenants',
+  'users',
+  'tenant_applications',
+  'permission_policies',
+  'user_preferences',
+  'email_accounts',
+  'email_messages',
+  'tasks',
+  'user_email_subscriptions',
+  'push_subscriptions',
+  'announcements',
+  'notices',
+];
+
+function getTableNames() {
+  // このリポでは常にマルチテーブルを利用する（single テーブルは移行後に削除想定）
+  return MULTI_TABLE_SUFFIXES.map((s) => `${TABLE_NAME}-${s}`);
+}
+
 const CREDENTIALS =
   ACCESS_KEY_ID && SECRET_ACCESS_KEY
     ? {
@@ -93,12 +113,12 @@ async function waitForDynamoDBLocal() {
   });
 }
 
-async function ensureTable() {
+async function ensureTable(tableName) {
   try {
     await withRetry(() =>
       client.send(
         new CreateTableCommand({
-          TableName: TABLE_NAME,
+          TableName: tableName,
           BillingMode: 'PAY_PER_REQUEST',
           AttributeDefinitions: [
             { AttributeName: 'PK', AttributeType: 'S' },
@@ -134,10 +154,10 @@ async function ensureTable() {
         })
       )
     );
-    console.log(`Created table ${TABLE_NAME}`);
+    console.log(`Created table ${tableName}`);
   } catch (e) {
     if (e.name === 'ResourceInUseException') {
-      console.log(`Table ${TABLE_NAME} already exists`);
+      console.log(`Table ${tableName} already exists`);
       return;
     }
     throw e;
@@ -149,7 +169,9 @@ async function seed() {
   if (IS_LOCAL) {
     // Avoid CI flakiness by waiting until DynamoDB Local is ready to accept connections.
     await waitForDynamoDBLocal();
-    await ensureTable();
+    for (const name of getTableNames()) {
+      await ensureTable(name);
+    }
   }
 
   const now = new Date().toISOString();
@@ -159,10 +181,13 @@ async function seed() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@example.com';
   const adminName = process.env.SEED_ADMIN_NAME || '管理者';
 
+  const tenantsTableName = `${TABLE_NAME}-tenants`;
+  const usersTableName = `${TABLE_NAME}-users`;
+
   await withRetry(() =>
     doc.send(
       new PutCommand({
-        TableName: TABLE_NAME,
+        TableName: tenantsTableName,
         Item: {
           PK: `TENANT#${tenantId}`,
           SK: `TENANT#${tenantId}`,
@@ -181,7 +206,7 @@ async function seed() {
   await withRetry(() =>
     doc.send(
       new PutCommand({
-        TableName: TABLE_NAME,
+        TableName: usersTableName,
         Item: {
           PK: `TENANT#${tenantId}`,
           SK: `USER#${adminSub}`,

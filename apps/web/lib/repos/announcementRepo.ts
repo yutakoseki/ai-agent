@@ -1,6 +1,7 @@
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, TABLE_NAME } from "@db/index";
-import { getItem } from "@db/tenant-client";
+import { docClient } from "@db/index";
+import { getTableName } from "@db/table";
+import { getItem } from "@db/tables/announcements";
 
 export const ANNOUNCEMENT_BOARD_SK = "ANNOUNCEMENTS#BOARD";
 
@@ -25,10 +26,11 @@ export async function upsertAnnouncementBoard(params: {
   updatedByUserId: string;
 }): Promise<AnnouncementBoardItem> {
   const now = new Date().toISOString();
+  const tableName = getTableName("announcements");
 
   const res = await docClient.send(
     new UpdateCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       Key: { PK: `TENANT#${params.tenantId}`, SK: ANNOUNCEMENT_BOARD_SK },
       UpdateExpression:
         "SET #markdown = :markdown, updatedAt = :now, updatedByUserId = :updatedByUserId, createdAt = if_not_exists(createdAt, :now)",
