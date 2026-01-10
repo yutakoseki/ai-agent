@@ -5,10 +5,14 @@ import { GET, POST } from "./route";
 import { NextRequest } from "next/server";
 import type { Session } from "@shared/auth";
 import { getSession } from "@/lib/auth/session";
+import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
 
 // セッション取得をオートモック
 vi.mock("@/lib/auth/session");
 const mockGetSession = vi.mocked(getSession);
+vi.mock("@/lib/auth/cognito");
+const mockCreateCognitoUser = vi.mocked(createCognitoUser);
+const mockDeleteCognitoUser = vi.mocked(deleteCognitoUser);
 
 const adminSession: Session = {
   userId: "user-1",
@@ -26,8 +30,19 @@ const managerSession: Session = {
   expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 };
 
+const headers = {
+  "Content-Type": "application/json",
+  Origin: "http://localhost:3000",
+};
+
 // デフォルトはAdminセッション
 mockGetSession.mockResolvedValue(adminSession);
+const subPrefix = Date.now().toString(36);
+let subCounter = 0;
+mockCreateCognitoUser.mockImplementation(async () => ({
+  sub: `cognito-${subPrefix}-${++subCounter}`,
+}));
+mockDeleteCognitoUser.mockResolvedValue();
 
 describe("GET /api/tenants", () => {
   it("Admin権限でテナント一覧を取得できる", async () => {
@@ -92,9 +107,7 @@ describe("POST /api/tenants", () => {
         adminEmail: "newadmin@example.com",
         adminPassword: "NewAdmin1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -114,9 +127,7 @@ describe("POST /api/tenants", () => {
         name: "新しいテナント",
         // plan, adminEmail, adminPassword が不足
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);
@@ -138,9 +149,7 @@ describe("POST /api/tenants", () => {
         adminEmail: "newadmin@example.com",
         adminPassword: "NewAdmin1234",
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     const response = await POST(request);

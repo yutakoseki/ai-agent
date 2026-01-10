@@ -1,121 +1,104 @@
 // ユーザー詳細取得・更新API
 
-import { NextRequest, NextResponse } from "next/server";
-import type { UpdateUserRequest } from "@shared/user";
-import { AppError } from "@shared/error";
-import { requireAuth, requireRole, requireTenant } from "@/lib/middleware/auth";
-import { handleError } from "@/lib/middleware/error";
+import { NextRequest, NextResponse } from 'next/server';
+import type { UpdateUserRequest } from '@shared/user';
+import { AppError } from '@shared/error';
+import { requireAuth, requireRole, requireTenant } from '@/lib/middleware/auth';
+import { handleError } from '@/lib/middleware/error';
+import { requireCsrf } from '@/lib/middleware/csrf';
+import { deleteCognitoUser } from '@/lib/auth/cognito';
+import { deleteUser, findUser, findUserByUserId, updateUser } from '@/lib/repos/userRepo';
 
-// TODO: DB接続後に実装
-const MOCK_USER = {
-  id: "user-1",
-  tenantId: "tenant-1",
-  email: "admin@example.com",
-  role: "Admin" as const,
-  name: "管理者",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
+export const runtime = 'nodejs';
 
 // ユーザー詳細取得
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { context, response } = await requireAuth(request);
   if (response) return response;
 
   try {
     const { id } = await params;
 
-    // TODO: DBからユーザー取得
-    // const user = await db.user.findUnique({ where: { id } });
-    const user = id === MOCK_USER.id ? MOCK_USER : null;
+    const isAdmin = context.session.role === 'Admin';
+    const user = isAdmin
+      ? await findUserByUserId(id)
+      : await findUser(context.session.tenantId, id);
 
     if (!user) {
-      throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
+      throw new AppError('NOT_FOUND', 'ユーザーが見つかりません');
     }
 
-    // テナント分離チェック
-    const tenantError = requireTenant(
-      context.session,
-      user.tenantId,
-      context.traceId
-    );
-    if (tenantError) return tenantError;
+    // テナント分離チェック（Adminは横断閲覧可能）
+    if (!isAdmin) {
+      const tenantError = requireTenant(context.session, user.tenantId, context.traceId);
+      if (tenantError) return tenantError;
+    }
 
     return NextResponse.json(user, {
-      headers: { "X-Trace-Id": context.traceId },
+      headers: { 'X-Trace-Id': context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, 'GET /api/users/:id');
   }
 }
 
 // ユーザー更新（Admin/Manager専用、または本人）
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { context, response } = await requireAuth(request);
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
     const body: UpdateUserRequest = await request.json();
 
-    // TODO: DBからユーザー取得
-    const user = id === MOCK_USER.id ? MOCK_USER : null;
+    const isAdmin = context.session.role === 'Admin';
+    const user = isAdmin
+      ? await findUserByUserId(id)
+      : await findUser(context.session.tenantId, id);
 
     if (!user) {
-      throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
+      throw new AppError('NOT_FOUND', 'ユーザーが見つかりません');
     }
 
-    // テナント分離チェック
-    const tenantError = requireTenant(
-      context.session,
-      user.tenantId,
-      context.traceId
-    );
-    if (tenantError) return tenantError;
+    // テナント分離チェック（Adminは横断更新可能）
+    if (!isAdmin) {
+      const tenantError = requireTenant(context.session, user.tenantId, context.traceId);
+      if (tenantError) return tenantError;
+    }
 
     // 権限チェック
     const isSelf = context.session.userId === id;
-    const isAdminOrManager = ["Admin", "Manager"].includes(
-      context.session.role
-    );
+    const isAdminOrManager = ['Admin', 'Manager'].includes(context.session.role);
 
     if (!isSelf && !isAdminOrManager) {
-      throw new AppError("FORBIDDEN", "他のユーザーを更新する権限がありません");
+      throw new AppError('FORBIDDEN', '他のユーザーを更新する権限がありません');
     }
 
-    // 役割変更は Admin/Manager のみ
-    if (body.role && !isAdminOrManager) {
-      throw new AppError("FORBIDDEN", "役割を変更する権限がありません");
+    // 役割変更は Admin のみ
+    if (body.role !== undefined) {
+      if (!isAdmin) {
+        throw new AppError('FORBIDDEN', '役割を変更できるのは管理者のみです');
+      }
+      if (!['Admin', 'Manager', 'Member'].includes(body.role)) {
+        throw new AppError('BAD_REQUEST', '不正な role です');
+      }
     }
 
-    // Managerは自分より上位の役割に変更できない
-    if (body.role === "Admin" && context.session.role === "Manager") {
-      throw new AppError("FORBIDDEN", "Admin役割に変更する権限がありません");
-    }
-
-    // TODO: DBでユーザー更新
-    // const updatedUser = await db.user.update({
-    //   where: { id },
-    //   data: body
-    // });
-
-    const updatedUser = {
-      ...user,
-      ...body,
-      updatedAt: new Date(),
-    };
+    const targetTenantId = isAdmin ? user.tenantId : context.session.tenantId;
+    const updatedUser = await updateUser(targetTenantId, id, {
+      email: body.email,
+      name: body.name,
+      role: body.role,
+    });
 
     return NextResponse.json(updatedUser, {
-      headers: { "X-Trace-Id": context.traceId },
+      headers: { 'X-Trace-Id': context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, 'PATCH /api/users/:id');
   }
 }
 
@@ -128,44 +111,44 @@ export async function DELETE(
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     const { id } = await params;
 
     // Admin/Manager権限チェック
-    const roleError = requireRole(
-      context.session,
-      ["Admin", "Manager"],
-      context.traceId
-    );
+    const roleError = requireRole(context.session, ['Admin', 'Manager'], context.traceId);
     if (roleError) return roleError;
 
-    // TODO: DBからユーザー取得
-    const user = id === MOCK_USER.id ? MOCK_USER : null;
+    const isAdmin = context.session.role === 'Admin';
+    const user = isAdmin
+      ? await findUserByUserId(id)
+      : await findUser(context.session.tenantId, id);
 
     if (!user) {
-      throw new AppError("NOT_FOUND", "ユーザーが見つかりません");
+      throw new AppError('NOT_FOUND', 'ユーザーが見つかりません');
     }
 
-    // テナント分離チェック
-    const tenantError = requireTenant(
-      context.session,
-      user.tenantId,
-      context.traceId
-    );
-    if (tenantError) return tenantError;
+    // テナント分離チェック（Adminは横断削除可能）
+    if (!isAdmin) {
+      const tenantError = requireTenant(context.session, user.tenantId, context.traceId);
+      if (tenantError) return tenantError;
+    }
 
     // 自分自身は削除できない
     if (context.session.userId === id) {
-      throw new AppError("BAD_REQUEST", "自分自身を削除することはできません");
+      throw new AppError('BAD_REQUEST', '自分自身を削除することはできません');
     }
 
-    // TODO: DBでユーザー削除（論理削除推奨）
-    // await db.user.delete({ where: { id } });
+    // Cognito → DB の順で削除（Cognitoが失敗したらDBは消さない）
+    await deleteCognitoUser(user.email);
+    await deleteUser(user.tenantId, id);
 
     return NextResponse.json(
-      { message: "ユーザーを削除しました" },
-      { headers: { "X-Trace-Id": context.traceId } }
+      { message: 'ユーザーを削除しました' },
+      { headers: { 'X-Trace-Id': context.traceId } }
     );
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, 'DELETE /api/users/:id');
   }
 }

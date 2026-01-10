@@ -9,17 +9,19 @@
 ```
 1. GitHub Secrets 設定（5分）
    ↓
-2. ブランチ作成（5分）
+2. Terraform リソース作成（10分）
    ↓
-3. テストPR作成とGitHub Actions実行（5分）
+3. ブランチ作成（5分）
    ↓
-4. ブランチ保護ルール設定（10分）
+4. テストPR作成とGitHub Actions実行（5分）
    ↓
-5. CODEOWNERS 更新（5分）
+5. ブランチ保護ルール設定（10分）
    ↓
-6. Amplify セットアップ（30分）
+6. CODEOWNERS 更新（5分）
    ↓
-7. 動作確認（10分）
+7. Amplify セットアップ（30分）
+   ↓
+8. 動作確認（10分）
 ```
 
 **所要時間**: 約1時間
@@ -50,11 +52,141 @@ Name: TEST_DATABASE_URL
 Value: postgres://test:test@localhost:5432/test_db
 ```
 
+#### Terraform/Infra 用（IaC 自動反映）
+
+`infra/terraform/**` の変更を自動反映するため、以下も追加します。
+
+```
+Name: AWS_ACCESS_KEY_ID
+Value: <IAMユーザーのアクセスキー>
+```
+
+```
+Name: AWS_SECRET_ACCESS_KEY
+Value: <IAMユーザーのシークレットキー>
+```
+
+```
+Name: AWS_REGION
+Value: ap-northeast-1
+```
+
+```
+Name: TF_STATE_BUCKET
+Value: aiagent-terraform-state
+```
+
+```
+Name: TF_STATE_LOCK_TABLE
+Value: aiagent-terraform-lock
+```
+
+```
+Name: TF_PROJECT
+Value: aiagent
+```
+
+- `TF_STATE_BUCKET`: Terraform state を保存する S3 バケット名（グローバル一意）
+- `TF_STATE_LOCK_TABLE`: state ロック用 DynamoDB テーブル名（同一リージョンに作成）
+- `TF_PROJECT`: リソース名のプレフィックス（未設定なら `aiagent`）
+
 **詳細**: `docs/02-GitHub-Secrets-チェックリスト.md`
 
 ---
 
-## ステップ2: ブランチ作成（5分）
+## ステップ2: Terraform リソース作成（10分）
+
+GitHub Actions による IaC 自動反映を使う場合、Cognito/DynamoDB を先に作成します。
+
+### 初回のみ（state backend 作成）
+
+※ `TF_PROJECT` は **リソースのプレフィックス**なのでサービス名をいれるといい<br>
+※ `TF_STATE_BUCKET` は **グローバル一意**の S3 バケット名にする
+
+```bash
+TF_PROJECT=aiagent \
+TF_STATE_BUCKET=aiagent-terraform-state \
+TF_STATE_LOCK_TABLE=aiagent-terraform-lock \
+AWS_REGION=ap-northeast-1 \
+TF_BOOTSTRAP_STATE=true \
+./scripts/terraform/provision-all.sh dev apply
+```
+
+### 以後は一括実行
+
+```bash
+TF_STATE_BUCKET=aiagent-terraform-state \
+TF_STATE_LOCK_TABLE=aiagent-terraform-lock \
+AWS_REGION=ap-northeast-1 \
+./scripts/terraform/provision-all.sh dev apply
+```
+
+### 初期テナント/管理者の投入（各環境で最初の 1 回だけ）
+
+自己登録は無効のため、**初期 Admin は手動で作成**します。
+
+1. Cognito で管理者ユーザーを作成
+2. `sub` を取得
+3. DynamoDB に **テナント + 管理者ユーザー** を投入
+
+```bash
+SEED_TENANT_ID=tenant-1 \
+SEED_ADMIN_SUB=<cognito-sub> \
+SEED_ADMIN_EMAIL=admin@example.com \
+DYNAMODB_ENDPOINT=https://dynamodb.ap-northeast-1.amazonaws.com \
+DYNAMODB_TABLE_NAME=aiagent-dev \
+AWS_REGION=ap-northeast-1 \
+pnpm exec node packages/db-dynamo/scripts/seed.mjs
+```
+
+#### 管理者の永久パスワード設定（必須）
+
+コンソールで作成したユーザーは `FORCE_CHANGE_PASSWORD` になるため、CLI で永久パスワードにします。
+
+```bash
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <user-pool-id> \
+  --username <email> \
+  --password '<new-password>' \
+  --permanent
+```
+
+※ `staging`/`prod` は `DYNAMODB_TABLE_NAME` を `aiagent-staging` / `aiagent-prod` に変更し、それぞれの Cognito ユーザー `sub` を使用します。
+
+**運用メモ（通常は手動実行不要）**
+
+- 通常の IaC 反映は GitHub Actions に任せる。`infra/terraform/**` か `scripts/terraform/**` に差分がある場合のみトリガー。
+- develop への push で dev 環境を自動 `apply`。develop→staging（staging→prod）の PR は plan のみ、マージ後のブランチ push でそれぞれ apply。
+- 手動実行が必要なのは「初回の state backend 作成（上の TF_BOOTSTRAP_STATE=true）」か、Actions が使えない緊急時・Secrets 未設定時などに限る。
+
+### 旧手順で init 済みの場合（backend 設定変更のエラーが出る時）
+
+以前の手順で `terraform init` 済みだと、backend に `key=terraform.tfstate` を追加した差分で
+`Backend configuration changed` が出ます。各モジュールごとに**一度だけ** reconfigure してから再実行してください。
+
+```bash
+TF_STATE_BUCKET=aiagent-terraform-state \
+TF_STATE_LOCK_TABLE=aiagent-terraform-lock \
+AWS_REGION=ap-northeast-1 \
+terraform -chdir=infra/terraform/dynamodb init -reconfigure \
+  -backend-config="bucket=aiagent-terraform-state" \
+  -backend-config="region=ap-northeast-1" \
+  -backend-config="dynamodb_table=aiagent-terraform-lock" \
+  -backend-config="encrypt=true" \
+  -backend-config="key=terraform.tfstate" \
+  -backend-config="workspace_key_prefix=aiagent/dynamodb"
+```
+
+※ `cognito` / `audit_logs` でも同様に `-chdir` と `workspace_key_prefix` を置き換えて実行
+
+**補足**:
+
+- `dev/staging/prod` それぞれで実行する
+- `TF_STATE_BUCKET` は **グローバル一意**の S3 バケット名にする
+
+---
+
+## ステップ3: ブランチ作成（5分）
 
 ```bash
 # 現在の変更をコミット
@@ -78,7 +210,7 @@ git push origin prod
 
 ---
 
-## ステップ3: テストPR作成とGitHub Actions実行（5分）
+## ステップ4: テストPR作成とGitHub Actions実行（5分）
 
 **重要**: ブランチ保護ルールを設定する前に、先にテストPRを作成してGitHub Actionsを実行します。
 これにより、Status checksが選択可能になります。
@@ -126,7 +258,7 @@ git push origin feature/test-ci
 
 ---
 
-## ステップ4: ブランチ保護ルール設定（10分）
+## ステップ5: ブランチ保護ルール設定（10分）
 
 GitHub Actions が実行された後、ブランチ保護ルールを設定します。
 
@@ -142,7 +274,7 @@ Branch name pattern: develop
 
 ☑ Require status checks to pass before merging
   ☑ Require branches to be up to date before merging
-  
+
   Status checks that are required:
   ☑ Lint and Format Check (GitHub Actions)
   ☑ unit-test (Any source)
@@ -167,7 +299,7 @@ Branch name pattern: staging
 
 ☑ Require status checks to pass before merging
   ☑ Require branches to be up to date before merging
-  
+
   Status checks that are required:
   ☑ Lint and Format Check (GitHub Actions)
   ☑ unit-test (Any source)
@@ -190,7 +322,7 @@ Branch name pattern: prod
 
 ☑ Require status checks to pass before merging
   ☑ Require branches to be up to date before merging
-  
+
   Status checks that are required:
   ☑ Lint and Format Check (GitHub Actions)
   ☑ unit-test (Any source)
@@ -208,18 +340,20 @@ Branch name pattern: prod
 
 ### 4.4 テストPRをマージ
 
-ステップ3で作成したPRに戻り、全てのチェックが通ったら **Merge pull request** をクリック
+ステップ4で作成したPRに戻り、全てのチェックが通ったら **Merge pull request** をクリック
 
 ---
 
-## ステップ5: CODEOWNERS 更新（5分）
+## ステップ6: CODEOWNERS 更新（5分）
 
 ### 更新する理由
+
 - PRの自動レビュアー割り当てが有効になり、レビュー漏れを防げる
 - ブランチ保護の「CODEOWNERSの承認必須」を使う場合、正しい所有者が必要
 - プレースホルダのままだと通知・承認が正しく機能しない
 
 ### 更新方法
+
 1. `develop` ブランチで作業
 2. `.github/CODEOWNERS` の `@your-org/...` を実在するユーザー名またはチーム名に置換
 3. 変更をコミットして push
@@ -248,33 +382,35 @@ git push origin develop
 
 ---
 
-## ステップ6: Amplify セットアップ（30分）
+## ステップ7: Amplify セットアップ（30分）
 
-### 6.1 Amplify アプリ作成
+### 7.1 Amplify アプリ作成
 
 1. [AWS Console](https://console.aws.amazon.com/) → **Amplify**
 2. **Create new app** → **Host web app**
 3. **GitHub** を選択 → リポジトリ選択
 4. ブランチ: `develop` を選択
 
-### 6.2 ビルド設定確認
+### 7.2 ビルド設定確認
 
 `amplify.yml` が自動検出されることを確認
 
-### 6.2.1 SSR（Web Compute）への切り替え【重要】
+### 7.2.1 SSR（Web Compute）への切り替え【重要】
 
 Next.js をバックエンド（API Routes/SSR）として使う場合、Amplify が **静的ホスティング（WEB）** のままだとトップページが **404** になります。必ず **SSR（WEB_COMPUTE）** に切り替えてください。
 
 **手順（コンソール）**:
+
 1. Amplify Console → 対象アプリ → **App settings** → **General**
 2. **Platform** を `WEB_COMPUTE` に変更
 3. **Hosting** → **Rewrites and redirects** で SPA ルール（`/<*> → /index.html (404-200)`）がある場合は削除
 4. 再デプロイ
 
 **補足**:
+
 - `output: "export"` を使った静的ホスティングにする場合は、API Routes は利用できません
 
-### 6.3 環境変数設定
+### 7.3 環境変数設定
 
 **Advanced settings** で以下を追加：
 
@@ -333,11 +469,11 @@ PASSWORD_RESET_SECRET=dev-password-reset-secret-min-32-characters-long
 - 本番環境では `JWT_SECRET` と `PASSWORD_RESET_SECRET` は必ず強力なランダム文字列にする
 - DynamoDB利用予定の場合は `DATABASE_URL` を使わないため、DynamoDB用の設定に置き換える（必要なら `packages/config/src/env.ts` も更新）
 
-### 6.4 デプロイ開始
+### 7.4 デプロイ開始
 
 **Save and deploy** → デプロイ完了を待つ（5-10分）
 
-### 6.5 staging と prod ブランチを追加
+### 7.5 staging と prod ブランチを追加
 
 同様の手順で `staging` と `prod` ブランチも接続
 
@@ -348,7 +484,7 @@ PASSWORD_RESET_SECRET=dev-password-reset-secret-min-32-characters-long
 openssl rand -base64 32
 ```
 
-### 6.6 URLをコピー
+### 7.6 URLをコピー
 
 各環境のURLをコピー：
 
@@ -356,11 +492,12 @@ openssl rand -base64 32
 - staging: `https://staging.xxxxx.amplifyapp.com`
 - prod: `https://prod.xxxxx.amplifyapp.com`
 
-### 6.7 GitHub Secrets に追加
+### 7.7 GitHub Secrets に追加
 
 GitHub → **Settings** → **Secrets and variables** → **Actions**
 
 ```
+AMPLIFY_APP_ID=d3twt10pcsc29v
 DEV_URL=https://develop.xxxxx.amplifyapp.com
 STAGING_URL=https://staging.xxxxx.amplifyapp.com
 PROD_URL=https://prod.xxxxx.amplifyapp.com
@@ -370,9 +507,9 @@ PROD_URL=https://prod.xxxxx.amplifyapp.com
 
 ---
 
-## ステップ7: 動作確認（10分）
+## ステップ8: 動作確認（10分）
 
-### 7.1 自動デプロイの確認
+### 8.1 自動デプロイの確認
 
 ```bash
 # developブランチで変更
@@ -385,7 +522,7 @@ git push origin develop
 
 Amplify Console でビルドが自動開始されることを確認
 
-### 7.2 アプリの動作確認
+### 8.2 アプリの動作確認
 
 各環境のURLにアクセス：
 
@@ -393,7 +530,7 @@ Amplify Console でビルドが自動開始されることを確認
 - <https://staging.xxxxx.amplifyapp.com>
 - <https://prod.xxxxx.amplifyapp.com>
 
-### 7.3 E2Eテストの確認（staging/prod のみ）
+### 8.3 E2Eテストの確認（staging/prod のみ）
 
 ```bash
 # stagingへのPRを作成
@@ -403,6 +540,11 @@ git push origin staging
 
 # GitHub Actions で e2e-test が実行されることを確認
 ```
+
+#### 補足（E2Eの参照先）
+
+- `develop → staging` のPRでは、E2Eは **stagingのURLではなく**、PRのhead（= develop）のブランチURL（`https://develop.<appId>.amplifyapp.com`）を参照します。
+- そのため `AMPLIFY_APP_ID` を GitHub Secrets に設定しておく必要があります。
 
 ---
 
@@ -457,6 +599,14 @@ git push origin staging
 1. Amplify Console でビルドログを確認
 2. 環境変数が正しく設定されているか確認
 3. `docs/05-CI-CD-リファレンス.md` の Amplify セクションのトラブルシューティングを参照
+
+**よくあるエラー**:
+
+- `Server trace files are not found in .../.next/standalone`
+  - `amplify.yml` の `artifacts.baseDirectory` を `.next` に変更
+  - モノレポの場合は `standalone` の `apps/web/.next/static` に `static` をコピーする
+- `The 'node_modules' folder is missing the 'next' dependency`
+  - `amplify.yml` で `.next/standalone/node_modules/next` に `standalone` もしくはルートの `.pnpm` から `next` をコピーする（シンボリックリンクは避ける）
 
 ---
 

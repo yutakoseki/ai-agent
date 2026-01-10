@@ -10,17 +10,16 @@ applications:
         build:
           commands:
             - pnpm build
-            - mkdir -p .next/standalone/.next
-            - cp -R .next/static .next/standalone/.next/static
-            - mkdir -p .next/standalone/.next/server
-            - cp -R .next/server/. .next/standalone/.next/server
-            - if [ -d public ]; then cp -R public .next/standalone/public; fi
-            - cp .next/required-server-files.json .next/standalone/required-server-files.json
+            - node ./scripts/patch-next-trace.mjs .next
       artifacts:
-        baseDirectory: .next/standalone
+        # Amplify の Web Compute バンドラは `.next/server` を基点に bundle を作るため、成果物ルートは `.next` に揃える
+        baseDirectory: .next
         files:
-          - "**/*"
+          - '**/*'
       cache:
         paths:
           - node_modules/**/*
           - .next/cache/**/*
+    amplifyHosting:
+      config:
+        SSR: true

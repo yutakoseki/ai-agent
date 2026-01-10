@@ -9,9 +9,11 @@
 
 ## 推奨実行順序
 1) リポ階層の確定と README 記載
-2) 環境変数スキーマ `.env.example` / `packages/config` 雛形
+2) 環境変数スキーマ `config/env.example` / `packages/config` 雛形
 3) CIドラフト（lint/test/build/SBOM、NodeとPythonをジョブ分離）
 4) AgentCore 連携方針（非同期キュー優先、同期最小）
 5) Terraform 雛形（Amplify Gen2 + 周辺）と state 分離
 6) テスト戦略（コンポーネント/E2E/疎通の最低カバレッジ）
+
+
 

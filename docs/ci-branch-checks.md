@@ -14,14 +14,21 @@
 - **トリガー**: `pull_request` / `push` to `staging`
 - **CI**
   - `pr-test.yml`: Lint → Unit → Integration → Build（@ai-agent/web）
-  - `e2e-test.yml`: Playwright E2E（`pnpm test:e2e`、`BASE_URL` は `STAGING_URL` シークレット）
+  - `e2e-test.yml`: Playwright E2E（`pnpm test:e2e`）
+    - **PR時**: `BASE_URL` は **PRの head ブランチURL**（`https://<head-branch>.<AMPLIFY_APP_ID>.amplifyapp.com`）
+      - 例: `develop → staging` のPRなら `https://develop.<appId>.amplifyapp.com`
+    - **push時**: `BASE_URL` は `STAGING_URL`（GitHub Secrets）
   - `backend-infra.yml`: Python lint/test（ruff + pytest, services/agent-core）、Terraform fmt/validate（infra/terraform）
 - **目的**: リリース候補の品質担保。BFF/API挙動・UI疎通・AgentCore/Pythonのlint/test・Terraform基本検証を網羅。
 
 ## prod
 - **トリガー**: `pull_request` / `push` to `prod`
 - **CI**
-  - staging と同構成（`pr-test.yml`, `e2e-test.yml`, `backend-infra.yml`）。`e2e-test.yml` では `BASE_URL` に `PROD_URL` を使用。
+  - staging と同構成（`pr-test.yml`, `e2e-test.yml`, `backend-infra.yml`）
+  - `e2e-test.yml` の `BASE_URL`:
+    - **PR時**: `BASE_URL` は **PRの head ブランチURL**（`https://<head-branch>.<AMPLIFY_APP_ID>.amplifyapp.com`）
+      - 例: `staging → prod` のPRなら `https://staging.<appId>.amplifyapp.com`
+    - **push時**: `BASE_URL` は `PROD_URL`（GitHub Secrets）
 - **目的**: 本番反映前の最終ゲート。staging 同等のテストを本番向け URL で確認。
 
 ## E2E（Playwright）の補足
@@ -34,3 +41,7 @@
 ## 運用メモ
 - develop ではローカル hook が唯一のチェックなので、各端末で Husky セットアップと `.env` の用意を必須とする。
 - staging/prod はリモート CI が走るため、緊急時を除き `--no-verify` は使わずローカルでもできるだけ同じフローを通す。
+
+## GitHub Secrets（E2E関連）
+- **`AMPLIFY_APP_ID`**: PR時のブランチURL組み立てに必須
+- **`STAGING_URL` / `PROD_URL`**: push（staging/prod）時の E2E 実行先

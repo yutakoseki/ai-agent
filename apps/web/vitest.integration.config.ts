@@ -15,6 +15,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./"),
       "@shared": path.resolve(__dirname, "../../packages/types/src"),
       "@config": path.resolve(__dirname, "../../packages/config/src"),
+      "@db": path.resolve(__dirname, "../../packages/db-dynamo/src"),
     },
   },
 });

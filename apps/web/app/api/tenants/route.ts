@@ -5,46 +5,55 @@ import type { CreateTenantRequest, TenantListResponse } from "@shared/tenant";
 import { AppError } from "@shared/error";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
-import { hashPassword } from "@/lib/auth/password";
-import { randomUUID } from "crypto";
+import { requireCsrf } from "@/lib/middleware/csrf";
+import { hashPassword, validatePasswordStrength } from "@/lib/auth/password";
+import { createCognitoUser, deleteCognitoUser } from "@/lib/auth/cognito";
+import { listTenants, createTenant, findTenantById } from "@/lib/repos/tenantRepo";
+import { createUser } from "@/lib/repos/userRepo";
+import { requirePermission } from "@/lib/auth/permissions";
 
-// TODO: DB接続後に実装
-const MOCK_TENANTS = [
-  {
-    id: "tenant-1",
-    name: "サンプルテナント",
-    plan: "Pro" as const,
-    enabled: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+export const runtime = "nodejs";
 
-// テナント一覧取得（Admin専用）
+// テナント一覧取得（Admin:全件 / Manager・Member:ポリシー許可時は自テナントのみ）
 export async function GET(request: NextRequest) {
   const { context, response } = await requireAuth(request);
   if (response) return response;
 
   try {
-    // Admin権限チェック
-    const roleError = requireRole(context.session, ["Admin"], context.traceId);
-    if (roleError) return roleError;
+    if (context.session.role === "Admin") {
+      const tenants = await listTenants();
+      const result: TenantListResponse = {
+        tenants,
+        total: tenants.length,
+        page: 1,
+        pageSize: tenants.length,
+      };
+      return NextResponse.json(result, {
+        headers: { "X-Trace-Id": context.traceId },
+      });
+    }
 
-    // TODO: DBからテナント一覧取得
-    // const tenants = await db.tenant.findMany();
+    const perm = await requirePermission({
+      session: context.session,
+      key: "tenant.list",
+      traceId: context.traceId,
+    });
+    if (!perm.ok) return perm.response;
 
+    const selfTenant = await findTenantById(context.session.tenantId);
+    const tenants = selfTenant ? [selfTenant] : [];
     const result: TenantListResponse = {
-      tenants: MOCK_TENANTS,
-      total: MOCK_TENANTS.length,
+      tenants,
+      total: tenants.length,
       page: 1,
-      pageSize: 10,
+      pageSize: tenants.length,
     };
 
     return NextResponse.json(result, {
       headers: { "X-Trace-Id": context.traceId },
     });
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "GET /api/tenants");
   }
 }
 
@@ -54,6 +63,9 @@ export async function POST(request: NextRequest) {
   if (response) return response;
 
   try {
+    const csrfError = requireCsrf(request, context.traceId);
+    if (csrfError) return csrfError;
+
     // Admin権限チェック
     const roleError = requireRole(context.session, ["Admin"], context.traceId);
     if (roleError) return roleError;
@@ -65,44 +77,47 @@ export async function POST(request: NextRequest) {
       throw new AppError("BAD_REQUEST", "必須項目が不足しています");
     }
 
-    // TODO: DBにテナント作成
-    const tenantId = randomUUID();
-    const userId = randomUUID();
-    const passwordHash = await hashPassword(body.adminPassword);
+    const passwordCheck = validatePasswordStrength(body.adminPassword);
+    if (!passwordCheck.valid) {
+      throw new AppError("BAD_REQUEST", "パスワードが要件を満たしていません", {
+        errors: passwordCheck.errors,
+      });
+    }
 
-    // const tenant = await db.tenant.create({
-    //   data: {
-    //     id: tenantId,
-    //     name: body.name,
-    //     plan: body.plan,
-    //     enabled: true
-    //   }
-    // });
+    const cognitoUser = await createCognitoUser(
+      body.adminEmail,
+      body.adminPassword,
+      "Admin"
+    );
 
-    // const user = await db.user.create({
-    //   data: {
-    //     id: userId,
-    //     tenantId,
-    //     email: body.adminEmail,
-    //     passwordHash,
-    //     role: 'Admin'
-    //   }
-    // });
+    try {
+      const passwordHash = await hashPassword(body.adminPassword);
+      const tenant = await createTenant(body);
+      await createUser(
+        tenant.id,
+        {
+          email: body.adminEmail,
+          password: body.adminPassword,
+          role: "Admin",
+          name: "Admin",
+        },
+        passwordHash,
+        cognitoUser.sub
+      );
 
-    const tenant = {
-      id: tenantId,
-      name: body.name,
-      plan: body.plan,
-      enabled: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return NextResponse.json(tenant, {
-      status: 201,
-      headers: { "X-Trace-Id": context.traceId },
-    });
+      return NextResponse.json(tenant, {
+        status: 201,
+        headers: { "X-Trace-Id": context.traceId },
+      });
+    } catch (error) {
+      try {
+        await deleteCognitoUser(body.adminEmail);
+      } catch {
+        // best-effort cleanup
+      }
+      throw error;
+    }
   } catch (error) {
-    return handleError(error, context.traceId);
+    return handleError(error, context.traceId, "POST /api/tenants");
   }
 }

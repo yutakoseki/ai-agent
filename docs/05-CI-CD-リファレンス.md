@@ -125,7 +125,7 @@ pnpm test password
 pnpm --filter @ai-agent/web build
 
 # 環境変数を確認
-cat .env.local
+cat apps/web/.env.local
 ```
 
 ### Amplify デプロイが失敗する
