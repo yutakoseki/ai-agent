@@ -1,6 +1,7 @@
 import { DeleteCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "crypto";
-import { docClient, TABLE_NAME } from "@db/index";
+import { docClient } from "@db/index";
+import { getTableName } from "@db/table";
 
 export type NoticeItem = {
   PK: "GLOBAL";
@@ -18,9 +19,10 @@ const NOTICE_PREFIX = "NOTICE#";
 const GLOBAL_PK = "GLOBAL" as const;
 
 export async function listNotices(): Promise<NoticeItem[]> {
+  const tableName = getTableName("notices");
   const res = await docClient.send(
     new QueryCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
       ExpressionAttributeValues: {
         ":pk": GLOBAL_PK,
@@ -39,6 +41,7 @@ export async function createNotice(params: {
   body: string;
   actorUserId: string;
 }): Promise<NoticeItem> {
+  const tableName = getTableName("notices");
   const now = new Date().toISOString();
   const id = randomUUID();
   const sk = `NOTICE#${id}` as const;
@@ -55,7 +58,7 @@ export async function createNotice(params: {
 
   await docClient.send(
     new PutCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       Item: { PK: GLOBAL_PK, SK: sk, ...item },
       ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
     })
@@ -69,12 +72,13 @@ export async function updateNotice(params: {
   body: string;
   actorUserId: string;
 }): Promise<NoticeItem> {
+  const tableName = getTableName("notices");
   const now = new Date().toISOString();
   const sk = `NOTICE#${params.id}` as const;
 
   const res = await docClient.send(
     new UpdateCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       Key: { PK: GLOBAL_PK, SK: sk },
       UpdateExpression:
         "SET #title = :title, #body = :body, updatedAt = :now, updatedByUserId = :actor",
@@ -100,10 +104,11 @@ export async function updateNotice(params: {
 export async function deleteNotice(params: {
   id: string;
 }): Promise<void> {
+  const tableName = getTableName("notices");
   const sk = `NOTICE#${params.id}`;
   await docClient.send(
     new DeleteCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       Key: { PK: GLOBAL_PK, SK: sk },
       ConditionExpression: "PK = :pk",
       ExpressionAttributeValues: { ":pk": GLOBAL_PK },

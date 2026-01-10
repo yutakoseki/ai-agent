@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { CreateTenantRequest, Tenant } from "@shared/tenant";
-import { putItem, queryByPrefix, getItem, queryGSI1 } from "@db/tenant-client";
+import { putItem, queryByPrefix, getItem, queryGSI1 } from "@db/tables/tenants";
 import type { TenantItem } from "@db/types";
 
 export async function listTenants(): Promise<Tenant[]> {

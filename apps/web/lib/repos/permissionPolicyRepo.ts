@@ -5,7 +5,7 @@ import type {
   PermissionScope,
 } from "@shared/permissions";
 import type { UserRole } from "@shared/auth";
-import { getItem, putItem, updateItem } from "@db/tenant-client";
+import { getItem, putItem, updateItem } from "@db/tables/permission-policies";
 
 type PermissionPolicyItem = {
   PK: `TENANT#${string}`;

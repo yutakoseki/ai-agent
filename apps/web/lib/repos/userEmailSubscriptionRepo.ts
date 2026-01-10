@@ -1,8 +1,8 @@
-import type { UserEmailAccountSubscription } from "@shared/mail";
-import { getItem, putItem, queryGSI2, updateItem } from "@db/tenant-client";
-import type { UserEmailAccountSubscriptionItem } from "@db/types";
+import type { UserEmailAccountSubscription } from '@shared/mail';
+import { getItem, putItem, queryGSI2, updateItem } from '@db/tables/user-email-subscriptions';
+import type { UserEmailAccountSubscriptionItem } from '@db/types';
 
-const SUB_PREFIX = "USER_EMAIL_SUB#";
+const SUB_PREFIX = 'USER_EMAIL_SUB#';
 
 function buildSk(userId: string, accountId: string) {
   return `${SUB_PREFIX}USER#${userId}#ACCOUNT#${accountId}`;
@@ -10,7 +10,7 @@ function buildSk(userId: string, accountId: string) {
 
 function mapSub(item: UserEmailAccountSubscriptionItem): UserEmailAccountSubscription {
   return {
-    tenantId: item.PK.replace("TENANT#", ""),
+    tenantId: item.PK.replace('TENANT#', ''),
     userId: item.userId,
     accountId: item.accountId,
     monitoringEnabled: item.monitoringEnabled,
@@ -48,7 +48,7 @@ export async function upsertUserEmailSubscription(params: {
   accountId: string;
   monitoringEnabled: boolean;
   pushEnabled: boolean;
-  role?: UserEmailAccountSubscription["role"];
+  role?: UserEmailAccountSubscription['role'];
 }): Promise<UserEmailAccountSubscription> {
   const now = new Date().toISOString();
   const sk = buildSk(params.userId, params.accountId);
@@ -59,35 +59,33 @@ export async function upsertUserEmailSubscription(params: {
       accountId: params.accountId,
       monitoringEnabled: params.monitoringEnabled,
       pushEnabled: params.pushEnabled,
-      role: params.role ?? "owner",
+      role: params.role ?? 'owner',
       createdAt: now,
       updatedAt: now,
       GSI2PK: `USER#${params.userId}#EMAIL_SUB`,
       GSI2SK: `ACCOUNT#${params.accountId}`,
     });
   } catch (error: any) {
-    const name = error && typeof error === "object" ? String(error.name) : "";
-    if (name !== "ConditionalCheckFailedException") throw error;
+    const name = error && typeof error === 'object' ? String(error.name) : '';
+    if (name !== 'ConditionalCheckFailedException') throw error;
 
     await updateItem(
       params.tenantId,
       sk,
-      "SET monitoringEnabled = :m, pushEnabled = :p, #role = :r, updatedAt = :u, GSI2PK = :g2pk, GSI2SK = :g2sk",
+      'SET monitoringEnabled = :m, pushEnabled = :p, #role = :r, updatedAt = :u, GSI2PK = :g2pk, GSI2SK = :g2sk',
       {
-        ":m": params.monitoringEnabled,
-        ":p": params.pushEnabled,
-        ":r": params.role ?? "owner",
-        ":u": now,
-        ":g2pk": `USER#${params.userId}#EMAIL_SUB`,
-        ":g2sk": `ACCOUNT#${params.accountId}`,
+        ':m': params.monitoringEnabled,
+        ':p': params.pushEnabled,
+        ':r': params.role ?? 'owner',
+        ':u': now,
+        ':g2pk': `USER#${params.userId}#EMAIL_SUB`,
+        ':g2sk': `ACCOUNT#${params.accountId}`,
       },
-      { "#role": "role" }
+      { '#role': 'role' }
     );
   }
 
   const item = await getItem<UserEmailAccountSubscriptionItem>(params.tenantId, sk);
-  if (!item) throw new Error("Subscription not found after upsert");
+  if (!item) throw new Error('Subscription not found after upsert');
   return mapSub(item);
 }
-
-

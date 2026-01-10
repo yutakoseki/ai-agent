@@ -11,7 +11,7 @@ import {
   transactWrite,
   updateItem,
   deleteItem,
-} from "@db/tenant-client";
+} from "@db/tables/users";
 import type { UserItem } from "@db/types";
 import { AppError } from "@shared/error";
 

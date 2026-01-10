@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { getItem, putItem, queryGSI2, updateItem } from "@db/tenant-client";
+import { getItem, putItem, queryGSI2, updateItem } from "@db/tables/push-subscriptions";
 import type { PushSubscriptionItem } from "@db/types";
 
 const PUSH_PREFIX = "PUSH_SUB#";

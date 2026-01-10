@@ -1,5 +1,5 @@
 import type { MailCategory } from "@shared/mail";
-import { getItem, putItem, updateItem } from "@db/tenant-client";
+import { getItem, putItem, updateItem } from "@db/tables/user-preferences";
 
 export type UserPreferences = {
   tenantId: string;

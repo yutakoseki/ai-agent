@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
-import { queryByPrefix } from "@db/tenant-client";
+import { queryByPrefix } from "@db/tables/email-accounts";
 import type { EmailAccountItem } from "@db/types";
 
 export const runtime = "nodejs";

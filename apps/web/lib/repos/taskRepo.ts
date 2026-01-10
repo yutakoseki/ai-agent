@@ -7,7 +7,7 @@ import {
   queryGSI1,
   queryGSI2,
   updateItem,
-} from '@db/tenant-client';
+} from '@db/tables/tasks';
 import type { TaskItem } from '@db/types';
 
 const TASK_PREFIX = 'TASK#';

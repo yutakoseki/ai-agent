@@ -1,4 +1,4 @@
-import { getItem, putItem, queryGSI2, updateItem } from "@db/tenant-client";
+import { getItem, putItem, queryGSI2, updateItem } from "@db/tables/email-messages";
 import type { EmailMessageItem } from "@db/types";
 
 const EMAIL_MESSAGE_PREFIX = "EMAIL_MESSAGE#";

@@ -7,7 +7,7 @@ import type {
   UpdateTenantApplicationRequest,
 } from "@shared/tenantApplication";
 import { AppError } from "@shared/error";
-import { getItem, putItem, queryGSI1, updateItem } from "@db/tenant-client";
+import { getItem, putItem, queryGSI1, updateItem } from "@db/tables/tenant-applications";
 import type { TenantApplicationItem } from "@db/types";
 
 const SYSTEM_TENANT_ID = "system";

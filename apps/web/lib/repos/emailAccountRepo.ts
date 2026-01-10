@@ -1,10 +1,10 @@
-import { randomUUID } from "crypto";
-import type { EmailAccount, MailLabelIds } from "@shared/mail";
-import { getItem, putItem, queryGSI1, queryGSI2, updateItem } from "@db/tenant-client";
-import type { EmailAccountItem } from "@db/types";
+import { randomUUID } from 'crypto';
+import type { EmailAccount, MailLabelIds } from '@shared/mail';
+import { getItem, putItem, queryGSI1, queryGSI2, updateItem } from '@db/tables/email-accounts';
+import type { EmailAccountItem } from '@db/types';
 
-const EMAIL_ACCOUNT_PREFIX = "EMAIL_ACCOUNT#";
-const EMAIL_GSI_PREFIX = "EMAIL#";
+const EMAIL_ACCOUNT_PREFIX = 'EMAIL_ACCOUNT#';
+const EMAIL_GSI_PREFIX = 'EMAIL#';
 
 export type EmailAccountLookup = {
   tenantId: string;
@@ -18,7 +18,7 @@ function normalizeEmail(email: string): string {
 function mapAccount(item: EmailAccountItem): EmailAccount {
   return {
     id: item.id,
-    tenantId: item.PK.replace("TENANT#", ""),
+    tenantId: item.PK.replace('TENANT#', ''),
     userId: item.userId,
     provider: item.provider,
     email: item.email,
@@ -39,7 +39,7 @@ export async function getEmailAccountItem(
 
 export async function findEmailAccountByEmailProvider(
   email: string,
-  provider: EmailAccountItem["provider"]
+  provider: EmailAccountItem['provider']
 ): Promise<EmailAccountLookup | null> {
   const normalized = normalizeEmail(email);
   const items = await queryGSI1<EmailAccountItem>(
@@ -49,24 +49,22 @@ export async function findEmailAccountByEmailProvider(
   const item = items[0];
   if (!item) return null;
   return {
-    tenantId: item.PK.replace("TENANT#", ""),
+    tenantId: item.PK.replace('TENANT#', ''),
     item,
   };
 }
 
-export async function listEmailAccountsByUser(
-  userId: string
-): Promise<EmailAccount[]> {
+export async function listEmailAccountsByUser(userId: string): Promise<EmailAccount[]> {
   // GSI2PK が USER#<userId> のレコードは他エンティティ（User等）とも衝突し得るため、
   // EmailAccount のみを GSI2SK プレフィックスで絞り込む。
-  const items = await queryGSI2<EmailAccountItem>(`USER#${userId}`, "EMAIL_ACCOUNT#");
+  const items = await queryGSI2<EmailAccountItem>(`USER#${userId}`, 'EMAIL_ACCOUNT#');
   return items.map(mapAccount);
 }
 
 export async function upsertEmailAccount(params: {
   tenantId: string;
   userId: string;
-  provider: EmailAccountItem["provider"];
+  provider: EmailAccountItem['provider'];
   email: string;
   accessTokenEnc?: string;
   refreshTokenEnc?: string;
@@ -76,7 +74,7 @@ export async function upsertEmailAccount(params: {
   watchLabelIds?: string[];
   gmailHistoryId?: string;
   gmailWatchExpiration?: string;
-  status?: EmailAccountItem["status"];
+  status?: EmailAccountItem['status'];
   accountId?: string;
 }): Promise<EmailAccount> {
   const now = new Date().toISOString();
@@ -90,7 +88,7 @@ export async function upsertEmailAccount(params: {
       provider: params.provider,
       email: normalized,
       userId: params.userId,
-      status: params.status ?? "active",
+      status: params.status ?? 'active',
       accessTokenEnc: params.accessTokenEnc,
       refreshTokenEnc: params.refreshTokenEnc,
       accessTokenExpiresAt: params.accessTokenExpiresAt,
@@ -107,79 +105,73 @@ export async function upsertEmailAccount(params: {
       GSI2SK: `EMAIL_ACCOUNT#${params.provider}#${normalized}`,
     });
   } catch (error: any) {
-    const name = error && typeof error === "object" ? String(error.name) : "";
-    if (name !== "ConditionalCheckFailedException") throw error;
+    const name = error && typeof error === 'object' ? String(error.name) : '';
+    if (name !== 'ConditionalCheckFailedException') throw error;
 
     const sets: string[] = [
-      "provider = :provider",
-      "email = :email",
-      "userId = :userId",
-      "#status = :status",
-      "updatedAt = :updatedAt",
-      "GSI1PK = :gsi1pk",
-      "GSI1SK = :gsi1sk",
-      "GSI2PK = :gsi2pk",
-      "GSI2SK = :gsi2sk",
+      'provider = :provider',
+      'email = :email',
+      'userId = :userId',
+      '#status = :status',
+      'updatedAt = :updatedAt',
+      'GSI1PK = :gsi1pk',
+      'GSI1SK = :gsi1sk',
+      'GSI2PK = :gsi2pk',
+      'GSI2SK = :gsi2sk',
     ];
-    const names: Record<string, string> = { "#status": "status" };
+    const names: Record<string, string> = { '#status': 'status' };
     const values: Record<string, unknown> = {
-      ":provider": params.provider,
-      ":email": normalized,
-      ":userId": params.userId,
-      ":status": params.status ?? "active",
-      ":updatedAt": now,
-      ":gsi1pk": `${EMAIL_GSI_PREFIX}${normalized}`,
-      ":gsi1sk": `PROVIDER#${params.provider}#TENANT#${params.tenantId}#ACCOUNT#${id}`,
-      ":gsi2pk": `USER#${params.userId}`,
-      ":gsi2sk": `EMAIL_ACCOUNT#${params.provider}#${normalized}`,
+      ':provider': params.provider,
+      ':email': normalized,
+      ':userId': params.userId,
+      ':status': params.status ?? 'active',
+      ':updatedAt': now,
+      ':gsi1pk': `${EMAIL_GSI_PREFIX}${normalized}`,
+      ':gsi1sk': `PROVIDER#${params.provider}#TENANT#${params.tenantId}#ACCOUNT#${id}`,
+      ':gsi2pk': `USER#${params.userId}`,
+      ':gsi2sk': `EMAIL_ACCOUNT#${params.provider}#${normalized}`,
     };
 
     if (params.accessTokenEnc !== undefined) {
-      sets.push("accessTokenEnc = :accessTokenEnc");
-      values[":accessTokenEnc"] = params.accessTokenEnc;
+      sets.push('accessTokenEnc = :accessTokenEnc');
+      values[':accessTokenEnc'] = params.accessTokenEnc;
     }
     if (params.refreshTokenEnc !== undefined) {
-      sets.push("refreshTokenEnc = :refreshTokenEnc");
-      values[":refreshTokenEnc"] = params.refreshTokenEnc;
+      sets.push('refreshTokenEnc = :refreshTokenEnc');
+      values[':refreshTokenEnc'] = params.refreshTokenEnc;
     }
     if (params.accessTokenExpiresAt !== undefined) {
-      sets.push("accessTokenExpiresAt = :accessTokenExpiresAt");
-      values[":accessTokenExpiresAt"] = params.accessTokenExpiresAt;
+      sets.push('accessTokenExpiresAt = :accessTokenExpiresAt');
+      values[':accessTokenExpiresAt'] = params.accessTokenExpiresAt;
     }
     if (params.scope !== undefined) {
-      sets.push("#scope = :scope");
-      values[":scope"] = params.scope;
-      names["#scope"] = "scope";
+      sets.push('#scope = :scope');
+      values[':scope'] = params.scope;
+      names['#scope'] = 'scope';
     }
     if (params.labelIds !== undefined) {
-      sets.push("labelIds = :labelIds");
-      values[":labelIds"] = params.labelIds;
+      sets.push('labelIds = :labelIds');
+      values[':labelIds'] = params.labelIds;
     }
     if (params.watchLabelIds !== undefined) {
-      sets.push("watchLabelIds = :watchLabelIds");
-      values[":watchLabelIds"] = params.watchLabelIds;
+      sets.push('watchLabelIds = :watchLabelIds');
+      values[':watchLabelIds'] = params.watchLabelIds;
     }
     if (params.gmailHistoryId !== undefined) {
-      sets.push("gmailHistoryId = :gmailHistoryId");
-      values[":gmailHistoryId"] = params.gmailHistoryId;
+      sets.push('gmailHistoryId = :gmailHistoryId');
+      values[':gmailHistoryId'] = params.gmailHistoryId;
     }
     if (params.gmailWatchExpiration !== undefined) {
-      sets.push("gmailWatchExpiration = :gmailWatchExpiration");
-      values[":gmailWatchExpiration"] = params.gmailWatchExpiration;
+      sets.push('gmailWatchExpiration = :gmailWatchExpiration');
+      values[':gmailWatchExpiration'] = params.gmailWatchExpiration;
     }
 
-    await updateItem(
-      params.tenantId,
-      sk,
-      `SET ${sets.join(", ")}`,
-      values,
-      names
-    );
+    await updateItem(params.tenantId, sk, `SET ${sets.join(', ')}`, values, names);
   }
 
   const item = await getEmailAccountItem(params.tenantId, id);
   if (!item) {
-    throw new Error("Email account not found after upsert");
+    throw new Error('Email account not found after upsert');
   }
   return mapAccount(item);
 }
@@ -194,53 +186,53 @@ export async function updateEmailAccountSyncState(params: {
   watchLabelIds?: string[];
   gmailHistoryId?: string;
   gmailWatchExpiration?: string;
-  status?: EmailAccountItem["status"];
+  status?: EmailAccountItem['status'];
 }): Promise<void> {
   const now = new Date().toISOString();
-  const sets: string[] = ["updatedAt = :updatedAt"];
+  const sets: string[] = ['updatedAt = :updatedAt'];
   const values: Record<string, unknown> = {
-    ":updatedAt": now,
+    ':updatedAt': now,
   };
   const names: Record<string, string> = {};
 
   if (params.accessTokenEnc !== undefined) {
-    sets.push("accessTokenEnc = :accessTokenEnc");
-    values[":accessTokenEnc"] = params.accessTokenEnc;
+    sets.push('accessTokenEnc = :accessTokenEnc');
+    values[':accessTokenEnc'] = params.accessTokenEnc;
   }
   if (params.refreshTokenEnc !== undefined) {
-    sets.push("refreshTokenEnc = :refreshTokenEnc");
-    values[":refreshTokenEnc"] = params.refreshTokenEnc;
+    sets.push('refreshTokenEnc = :refreshTokenEnc');
+    values[':refreshTokenEnc'] = params.refreshTokenEnc;
   }
   if (params.accessTokenExpiresAt !== undefined) {
-    sets.push("accessTokenExpiresAt = :accessTokenExpiresAt");
-    values[":accessTokenExpiresAt"] = params.accessTokenExpiresAt;
+    sets.push('accessTokenExpiresAt = :accessTokenExpiresAt');
+    values[':accessTokenExpiresAt'] = params.accessTokenExpiresAt;
   }
   if (params.labelIds !== undefined) {
-    sets.push("labelIds = :labelIds");
-    values[":labelIds"] = params.labelIds;
+    sets.push('labelIds = :labelIds');
+    values[':labelIds'] = params.labelIds;
   }
   if (params.watchLabelIds !== undefined) {
-    sets.push("watchLabelIds = :watchLabelIds");
-    values[":watchLabelIds"] = params.watchLabelIds;
+    sets.push('watchLabelIds = :watchLabelIds');
+    values[':watchLabelIds'] = params.watchLabelIds;
   }
   if (params.gmailHistoryId !== undefined) {
-    sets.push("gmailHistoryId = :gmailHistoryId");
-    values[":gmailHistoryId"] = params.gmailHistoryId;
+    sets.push('gmailHistoryId = :gmailHistoryId');
+    values[':gmailHistoryId'] = params.gmailHistoryId;
   }
   if (params.gmailWatchExpiration !== undefined) {
-    sets.push("gmailWatchExpiration = :gmailWatchExpiration");
-    values[":gmailWatchExpiration"] = params.gmailWatchExpiration;
+    sets.push('gmailWatchExpiration = :gmailWatchExpiration');
+    values[':gmailWatchExpiration'] = params.gmailWatchExpiration;
   }
   if (params.status !== undefined) {
-    sets.push("#status = :status");
-    values[":status"] = params.status;
-    names["#status"] = "status";
+    sets.push('#status = :status');
+    values[':status'] = params.status;
+    names['#status'] = 'status';
   }
 
   await updateItem(
     params.tenantId,
     `${EMAIL_ACCOUNT_PREFIX}${params.accountId}`,
-    `SET ${sets.join(", ")}`,
+    `SET ${sets.join(', ')}`,
     values,
     Object.keys(names).length ? names : undefined
   );
