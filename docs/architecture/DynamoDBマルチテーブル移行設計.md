@@ -36,6 +36,70 @@
 | `announcements` | AnnouncementBoard | `PK=TENANT#<tenantId>`, `SK=ANNOUNCEMENTS#BOARD` | なし |
 | `notices` | Notice | `PK=GLOBAL`, `SK=NOTICE#<id>` | なし |
 
+## 各テーブルの役割（運用向けまとめ）
+
+テーブル名は `DYNAMODB_TABLE_NAME=<base>` を前提に、実テーブルは `<base>-<suffix>`（例: `aiagent-dev-users`）。
+
+- **`<base>-tenants`**: テナント情報（プラン/有効フラグなど）
+  - **主なデータ**: `TenantItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=TENANT#tenant-1`
+  - **用途**: テナント一覧、テナント参照
+
+- **`<base>-users`**: テナント配下のユーザー（Cognito `sub` を userId として扱う）
+  - **主なデータ**: `UserItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=USER#<cognito-sub>`
+  - **用途**: ユーザーCRUD、全ユーザー横断一覧（GSI1）、`userId -> tenantId` 逆引き（GSI2）
+
+- **`<base>-tenant_applications`**: テナント申請（systemテナントに集約）
+  - **主なデータ**: `TenantApplicationItem`
+  - **キー例**: `PK=TENANT#system`, `SK=TENANT_APPLICATION#<id>`
+  - **用途**: 申請一覧（GSI1）、審査/更新
+
+- **`<base>-permission_policies`**: 権限ポリシー（テナントごとに1件）
+  - **主なデータ**: `POLICY#PERMISSIONS`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=POLICY#PERMISSIONS`
+  - **用途**: RBACのポリシー参照/更新
+
+- **`<base>-user_preferences`**: ユーザー個別設定（カテゴリ表示など）
+  - **主なデータ**: `USER_PREFS#USER#<userId>`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=USER_PREFS#USER#<cognito-sub>`
+  - **用途**: 設定参照/更新
+
+- **`<base>-email_accounts`**: メールアカウント連携（Gmail/Outlook）
+  - **主なデータ**: `EmailAccountItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=EMAIL_ACCOUNT#<id>`
+  - **用途**: `email+provider` で検索（GSI1）、ユーザー配下の一覧（GSI2）、トークン/同期状態保存
+
+- **`<base>-email_messages`**: メールメッセージ（同期したメタ情報）
+  - **主なデータ**: `EmailMessageItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=EMAIL_MESSAGE#<id>`
+  - **用途**: task と紐付いたメールの時系列表示（GSI2）
+
+- **`<base>-tasks`**: タスク（メール起点の対応タスクなど）
+  - **主なデータ**: `TaskItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=TASK#<id>`
+  - **用途**: ステータス別一覧（GSI1）、ユーザー配下一覧（GSI2）
+
+- **`<base>-user_email_subscriptions`**: ユーザー×メールアカウントの購読/監視設定
+  - **主なデータ**: `UserEmailAccountSubscriptionItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=USER_EMAIL_SUB#USER#<userId>#ACCOUNT#<accountId>`
+  - **用途**: ユーザー配下の購読一覧（GSI2）
+
+- **`<base>-push_subscriptions`**: Web Push購読（端末/ブラウザのendpoint）
+  - **主なデータ**: `PushSubscriptionItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=PUSH_SUB#<id>`
+  - **用途**: ユーザー配下のPush購読一覧（GSI2）
+
+- **`<base>-announcements`**: テナント内お知らせボード（テナントごとに1件）
+  - **主なデータ**: `AnnouncementBoardItem`
+  - **キー例**: `PK=TENANT#tenant-1`, `SK=ANNOUNCEMENTS#BOARD`
+  - **用途**: お知らせMarkdownの参照/更新
+
+- **`<base>-notices`**: 全体向け通知（GLOBAL）
+  - **主なデータ**: `NoticeItem`
+  - **キー例**: `PK=GLOBAL`, `SK=NOTICE#<id>`
+  - **用途**: 全体通知のCRUD
+
 ## 移行手順（推奨）
 
 ### 1) 新テーブル作成（Terraform）
