@@ -145,7 +145,7 @@ export async function GET(
               from: stored.from ?? null,
               to: stored.to ?? null,
               cc: stored.cc ?? null,
-              snippet: stored.snippet ?? null,
+              snippet: stored.snippetSummary ?? stored.snippet ?? null,
               receivedAt: stored.receivedAt ?? null,
             }
           : null,

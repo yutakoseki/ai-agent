@@ -38,6 +38,7 @@ export async function updateEmailMessageTaskLink(params: {
   messageKey: string;
   taskId: string;
   timelineSummary?: string;
+  snippetSummary?: string;
   direction?: "incoming" | "outgoing" | "unknown";
   receivedAt?: string | null;
 }): Promise<void> {
@@ -59,6 +60,10 @@ export async function updateEmailMessageTaskLink(params: {
   if (params.timelineSummary !== undefined) {
     sets.push("timelineSummary = :timelineSummary");
     values[":timelineSummary"] = params.timelineSummary || null;
+  }
+  if (params.snippetSummary !== undefined) {
+    sets.push("snippetSummary = :snippetSummary");
+    values[":snippetSummary"] = params.snippetSummary || null;
   }
   if (params.direction !== undefined) {
     sets.push("direction = :direction");

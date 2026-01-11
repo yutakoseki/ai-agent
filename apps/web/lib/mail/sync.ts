@@ -61,18 +61,27 @@ function sanitizeTitle(params: { title: string; company?: string | null }): stri
   return t || '要対応メール';
 }
 
-function buildTimelineSummary(params: {
-  aiSummary?: string;
-  subject?: string;
-  snippet?: string;
-}): string {
-  const raw =
-    (params.aiSummary ?? '').trim() ||
-    (params.subject ?? '').trim() ||
-    (params.snippet ?? '').trim() ||
-    '（要約なし）';
-  const s = raw.replace(/\s+/g, ' ').trim();
-  return s.length <= 120 ? s : `${s.slice(0, 119)}…`;
+function buildTimelineSummaryFallback(params: { subject?: string; snippet?: string }): string {
+  const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
+  // subject は装飾（【対応依頼】など）が入りがちなので、snippet 優先でフォールバックする
+  const raw = normalize(params.snippet ?? '') || normalize(params.subject ?? '') || '（要約なし）';
+  return raw.length <= 60 ? raw : `${raw.slice(0, 59)}…`;
+}
+
+function buildSnippetSummaryFallback(params: {
+  title?: string;
+  summary?: string;
+}): string | undefined {
+  const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
+  const title = normalize(params.title ?? '');
+  const summary = normalize(params.summary ?? '');
+  if (!title && !summary) return undefined;
+  if (title && summary) {
+    const s = `${title}\n${summary}`;
+    return s.length <= 400 ? s : `${s.slice(0, 399)}…`;
+  }
+  const single = title || summary;
+  return single.length <= 400 ? single : `${single.slice(0, 399)}…`;
 }
 
 async function resolveLegacyTaskIdFromThread(params: {
@@ -269,7 +278,9 @@ export async function syncGmailAccount(params: {
   accountId: string;
   maxMessages?: number;
   labelId?: string;
+  traceId?: string;
 }): Promise<{ processed: number; skipped: number }> {
+  const startedAt = Date.now();
   const account = await getEmailAccountItem(params.tenantId, params.accountId);
   if (!account) {
     throw new AppError('NOT_FOUND', 'Email account not found');
@@ -291,6 +302,15 @@ export async function syncGmailAccount(params: {
   let accessTokenExpiresAt = account.accessTokenExpiresAt;
   let refreshTokenEnc = account.refreshTokenEnc;
 
+  logger.info('gmail sync: start', {
+    traceId: params.traceId,
+    tenantId: params.tenantId,
+    accountId: params.accountId,
+    userId: account.userId,
+    maxMessages: params.maxMessages ?? MAX_MESSAGES_DEFAULT,
+    labelId: params.labelId ?? null,
+  });
+
   if (!accessToken || isExpired(accessTokenExpiresAt)) {
     const refreshed = await ensureAccessToken({
       accessTokenEnc,
@@ -304,6 +324,7 @@ export async function syncGmailAccount(params: {
 
   if (!account.gmailHistoryId) {
     logger.warn('gmail historyId missing', {
+      traceId: params.traceId,
       tenantId: params.tenantId,
       accountId: params.accountId,
     });
@@ -332,6 +353,15 @@ export async function syncGmailAccount(params: {
     pageToken = history.nextPageToken;
   } while (pageToken && messageIds.size < maxMessages);
 
+  logger.info('gmail sync: history collected', {
+    traceId: params.traceId,
+    tenantId: params.tenantId,
+    accountId: params.accountId,
+    startHistoryId: account.gmailHistoryId,
+    endHistoryId: historyId,
+    messageCount: messageIds.size,
+  });
+
   let processed = 0;
   let skipped = 0;
   const labelMap = getGmailLabelMap(account.labelIds);
@@ -341,6 +371,11 @@ export async function syncGmailAccount(params: {
   // monitoringEnabled=false の場合は「タスク化/ラベル付与/保存」を行わず、
   // historyId だけ追従して取りこぼしを防ぐ（再ON時に大量処理にならない）
   if (sub && sub.monitoringEnabled === false) {
+    logger.info('gmail sync: monitoring disabled (skip processing)', {
+      traceId: params.traceId,
+      tenantId: params.tenantId,
+      accountId: params.accountId,
+    });
     await updateEmailAccountSyncState({
       tenantId: params.tenantId,
       accountId: params.accountId,
@@ -355,6 +390,13 @@ export async function syncGmailAccount(params: {
   for (const messageId of Array.from(messageIds)) {
     try {
       const aiEnabled = isMailAIEnabled();
+      logger.debug('gmail sync: message start', {
+        traceId: params.traceId,
+        tenantId: params.tenantId,
+        accountId: params.accountId,
+        messageId,
+        aiEnabled,
+      });
       const message = aiEnabled
         ? await fetchGmailMessageFull({ accessToken, messageId })
         : await fetchGmailMessage({ accessToken, messageId });
@@ -368,8 +410,23 @@ export async function syncGmailAccount(params: {
             to: headers.to,
             snippet: message.snippet,
             bodyText,
+            traceId: params.traceId,
           })
         : null;
+
+      logger.info('gmail sync: analyzed', {
+        traceId: params.traceId,
+        tenantId: params.tenantId,
+        accountId: params.accountId,
+        messageId,
+        hasAI: Boolean(ai),
+        aiCategory: ai?.category ?? null,
+        aiNeedsAction: ai?.needsAction ?? null,
+        hasTimelineSummary: Boolean((ai?.timelineSummary ?? '').trim()),
+        hasSnippetSummary: Boolean((ai?.snippetSummary ?? '').trim()),
+        draftTitleLen: (ai?.draft?.title ?? '').length,
+        draftSummaryLen: (ai?.draft?.summary ?? '').length,
+      });
 
       // 署名はAIが有効ならAIの抽出を最優先（本文は既にAIに渡しているので追加コストほぼなし）
       const signature =
@@ -414,11 +471,18 @@ export async function syncGmailAccount(params: {
       const receivedAt = message.internalDate
         ? new Date(Number(message.internalDate)).toISOString()
         : undefined;
-      const timelineSummary = buildTimelineSummary({
-        aiSummary: ai?.draft?.summary,
-        subject: headers.subject,
-        snippet: message.snippet,
-      });
+      const timelineSummary =
+        // まず AI の timelineSummary（新仕様）
+        (ai?.timelineSummary ?? '').trim() ||
+        // AIが新フィールドを返さない場合でも、最低限AIの title を使って件名依存を避ける
+        (ai?.draft?.title ?? '').trim() ||
+        buildTimelineSummaryFallback({ subject: headers.subject, snippet: message.snippet });
+
+      const snippetSummary =
+        // AIの要点まとめ（新仕様）
+        (ai?.snippetSummary ?? '').trim() ||
+        // 返ってこない場合の最低限: AIの title/summary を使う（Gmail snippet 生表示を避ける）
+        buildSnippetSummaryFallback({ title: ai?.draft?.title, summary: ai?.draft?.summary });
       const created = await createEmailMessageIfNotExists(params.tenantId, {
         id: messageKey,
         provider: account.provider,
@@ -430,6 +494,7 @@ export async function syncGmailAccount(params: {
         to: headers.to ? [headers.to] : undefined,
         cc: headers.cc ? [headers.cc] : undefined,
         snippet: message.snippet,
+        snippetSummary,
         timelineSummary,
         direction,
         receivedAt,
@@ -441,11 +506,38 @@ export async function syncGmailAccount(params: {
         updatedAt: now,
       });
 
+      logger.info('gmail sync: email_message saved', {
+        traceId: params.traceId,
+        tenantId: params.tenantId,
+        accountId: params.accountId,
+        messageId: message.id,
+        messageKey,
+        created,
+        hasTimelineSummary: Boolean(String(timelineSummary ?? '').trim()),
+        hasSnippetSummary: Boolean(String(snippetSummary ?? '').trim()),
+      });
+
       if (!created) {
         // 既存でも、taskIdリンクや要約が未セットなら追記したいので確認する
         const existing = await getEmailMessageItem(params.tenantId, messageKey);
-        if (existing?.taskId && existing.timelineSummary) {
+        const existingTimeline = String(existing?.timelineSummary ?? '').trim();
+        const existingSubject = String(existing?.subject ?? '').trim();
+        // 既存timelineSummaryが「件名そのまま」っぽい場合は、本文要約に更新したいのでスキップしない
+        const looksLikeSubject = Boolean(
+          existingTimeline && existingSubject && existingTimeline === existingSubject
+        );
+        const existingSnippetSummary = String((existing as any)?.snippetSummary ?? '').trim();
+        const needsUpgrade = looksLikeSubject || !existingTimeline || !existingSnippetSummary;
+        if (existing?.taskId && !needsUpgrade) {
           skipped += 1;
+          logger.debug('gmail sync: message skipped (already linked & summarized)', {
+            traceId: params.traceId,
+            tenantId: params.tenantId,
+            accountId: params.accountId,
+            messageId: message.id,
+            messageKey,
+            taskId: existing.taskId,
+          });
           continue;
         }
       }
@@ -481,8 +573,17 @@ export async function syncGmailAccount(params: {
             messageKey,
             taskId: updated.id,
             timelineSummary,
+            snippetSummary,
             direction,
             receivedAt: receivedAt ?? null,
+          });
+          logger.info('gmail sync: outgoing linked to task (done)', {
+            traceId: params.traceId,
+            tenantId: params.tenantId,
+            accountId: params.accountId,
+            messageId: message.id,
+            messageKey,
+            taskId: updated.id,
           });
         } catch {
           // 既存タスクが無い等は無視
@@ -524,8 +625,18 @@ export async function syncGmailAccount(params: {
             messageKey,
             taskId: task.id,
             timelineSummary,
+            snippetSummary,
             direction,
             receivedAt: receivedAt ?? null,
+          });
+          logger.info('gmail sync: task created & linked', {
+            traceId: params.traceId,
+            tenantId: params.tenantId,
+            accountId: params.accountId,
+            messageId: message.id,
+            messageKey,
+            taskId: task.id,
+            category: classification.category,
           });
           // pushEnabled=false の場合は通知しない
           if (!sub || sub.pushEnabled) {
@@ -557,8 +668,18 @@ export async function syncGmailAccount(params: {
               messageKey,
               taskId: updated.id,
               timelineSummary,
+              snippetSummary,
               direction,
               receivedAt: receivedAt ?? null,
+            });
+            logger.info('gmail sync: task updated & linked', {
+              traceId: params.traceId,
+              tenantId: params.tenantId,
+              accountId: params.accountId,
+              messageId: message.id,
+              messageKey,
+              taskId: updated.id,
+              category: classification.category,
             });
             if (!sub || sub.pushEnabled) {
               await sendTaskPush({ userId: account.userId, task: updated });
@@ -567,6 +688,17 @@ export async function syncGmailAccount(params: {
             // ignore
           }
         }
+      } else {
+        logger.debug('gmail sync: no task needed', {
+          traceId: params.traceId,
+          tenantId: params.tenantId,
+          accountId: params.accountId,
+          messageId: message.id,
+          messageKey,
+          category: classification.category,
+          needsAction: classification.needsAction,
+          isOutgoing,
+        });
       }
 
       const ensured = await ensureLabelId({
@@ -590,6 +722,7 @@ export async function syncGmailAccount(params: {
       logger.warn('gmail sync message failed', {
         error,
         messageId,
+        traceId: params.traceId,
         tenantId: params.tenantId,
         accountId: params.accountId,
       });
@@ -606,5 +739,13 @@ export async function syncGmailAccount(params: {
     gmailHistoryId: historyId,
   });
 
+  logger.info('gmail sync: done', {
+    traceId: params.traceId,
+    tenantId: params.tenantId,
+    accountId: params.accountId,
+    processed,
+    skipped,
+    durationMs: Date.now() - startedAt,
+  });
   return { processed, skipped };
 }
