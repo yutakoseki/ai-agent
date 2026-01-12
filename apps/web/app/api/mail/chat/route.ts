@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.OPENAI_API_KEY || "";
     if (!apiKey) throw new AppError("BAD_REQUEST", "OPENAI_API_KEY が未設定です");
-    const model = process.env.OPENAI_MODEL || "gpt-5.2";
+    const model = process.env.OPENAI_MODEL || "gpt-5.2-nano";
 
     const { accessToken, account } = await getAccessTokenForGmailAccount({
       tenantId: context.session.tenantId,

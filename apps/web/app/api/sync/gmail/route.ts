@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
         tenantId: context.session.tenantId,
         accountId: account.id,
         maxMessages,
+        traceId: context.traceId,
       });
       results.push({ accountId: account.id, ...result });
     }

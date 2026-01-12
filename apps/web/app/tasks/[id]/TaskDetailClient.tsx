@@ -340,9 +340,9 @@ export function TaskDetailClient(props: { task: TaskView }) {
                   <span className="text-ink-soft">受信:</span> {formatDateTime(emailMessage.receivedAt)}
                 </div>
                 {emailMessage.snippet ? (
-                  <div className="rounded-xl border border-ink/10 bg-surface-raised/40 p-3 text-sm text-ink">
+                  <pre className="whitespace-pre-wrap rounded-xl border border-ink/10 bg-surface-raised/40 p-3 text-sm text-ink">
                     {emailMessage.snippet}
-                  </div>
+                  </pre>
                 ) : null}
                 {mailBodyText ? (
                   <details className="rounded-xl border border-ink/10 bg-surface-raised/40 p-3">

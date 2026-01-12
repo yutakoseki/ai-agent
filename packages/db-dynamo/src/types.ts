@@ -96,6 +96,11 @@ export type EmailMessageItem = {
   cc?: string[];
   snippet?: string;
   /**
+   * 画面表示用の要点スニペット（箇条書き/改行を含む場合あり）
+   * - Gmail APIのsnippet(原文抜粋)は挨拶や署名が混ざりやすいので、本文から要点抽出したものを入れる
+   */
+  snippetSummary?: string;
+  /**
    * 時系列表示用の短い要約（1〜2文程度）
    */
   timelineSummary?: string;
