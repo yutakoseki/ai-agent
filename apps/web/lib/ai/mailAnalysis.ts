@@ -101,7 +101,7 @@ export async function analyzeMailWithAI(params: {
 }): Promise<MailAIAnalysis | null> {
   const apiKey = process.env.OPENAI_API_KEY || '';
   if (!apiKey) return null;
-  const model = process.env.OPENAI_MODEL || 'gpt-5.2';
+  const model = process.env.OPENAI_MODEL || 'gpt-5.2-nano';
 
   const input = {
     subject: truncate(params.subject, 300),
@@ -216,7 +216,7 @@ export async function analyzeMailWithAI(params: {
   }
 
   try {
-    logger.info('openai analyze: start', {
+    logger.debug('openai analyze: start', {
       traceId: params.traceId,
       model,
       hasBodyText: Boolean(params.bodyText),
@@ -296,7 +296,7 @@ export async function analyzeMailWithAI(params: {
       signature,
     };
 
-    logger.info('openai analyze: success', {
+    logger.debug('openai analyze: success', {
       traceId: params.traceId,
       model,
       didRepair,

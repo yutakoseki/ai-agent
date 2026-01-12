@@ -59,7 +59,7 @@
 
 - AI（LLM）で分類/要約/タスク化する場合:
   - `OPENAI_API_KEY`
-  - `OPENAI_MODEL`（例: `gpt-5.2`）
+  - `OPENAI_MODEL`（例: `gpt-5.2-nano`）
 
 ### Web Push（PWA通知）の設定手順（Amplify想定）
 

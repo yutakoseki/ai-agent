@@ -414,7 +414,7 @@ export async function syncGmailAccount(params: {
           })
         : null;
 
-      logger.info('gmail sync: analyzed', {
+      logger.debug('gmail sync: analyzed', {
         traceId: params.traceId,
         tenantId: params.tenantId,
         accountId: params.accountId,
@@ -506,7 +506,7 @@ export async function syncGmailAccount(params: {
         updatedAt: now,
       });
 
-      logger.info('gmail sync: email_message saved', {
+      logger.debug('gmail sync: email_message saved', {
         traceId: params.traceId,
         tenantId: params.tenantId,
         accountId: params.accountId,
