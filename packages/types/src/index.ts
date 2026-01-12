@@ -19,5 +19,8 @@ export * from "./user";
 // メール/タスク関連
 export * from "./mail";
 
+// RSS関連
+export * from "./rss";
+
 // エラー関連
 export * from "./error";

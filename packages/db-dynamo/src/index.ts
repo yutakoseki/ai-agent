@@ -16,7 +16,10 @@ export * as userPreferencesDb from "./tables/user-preferences";
 export * as permissionPoliciesDb from "./tables/permission-policies";
 export * as tenantApplicationsDb from "./tables/tenant-applications";
 export * as announcementsDb from "./tables/announcements";
-
+export * as rssSourcesDb from "./tables/rss-sources";
+export * as rssItemsDb from "./tables/rss-items";
+export * as rssDraftsDb from "./tables/rss-drafts";
+export * as rssUsageDb from "./tables/rss-usage";
 
 
 

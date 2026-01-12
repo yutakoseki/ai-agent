@@ -13,7 +13,11 @@ export type TableKind =
   | "user_email_subscriptions"
   | "push_subscriptions"
   | "announcements"
-  | "notices";
+  | "notices"
+  | "rss_sources"
+  | "rss_items"
+  | "rss_drafts"
+  | "rss_usage";
 
 /**
  * マルチテーブル移行用のテーブル名解決。
@@ -29,7 +33,6 @@ export const TABLE_NAME = BASE_TABLE_NAME;
 
 export const GSI1_NAME = "GSI1";
 export const GSI2_NAME = "GSI2";
-
 
 
 
