@@ -22,6 +22,10 @@ const MULTI_TABLE_SUFFIXES = [
   'push_subscriptions',
   'announcements',
   'notices',
+  'rss_sources',
+  'rss_items',
+  'rss_drafts',
+  'rss_usage',
 ];
 
 function getTableNames() {

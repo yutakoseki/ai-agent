@@ -175,3 +175,73 @@ export type PushSubscriptionItem = {
   GSI2PK?: `USER#${string}#PUSH`;
   GSI2SK?: string;
 };
+
+export type RssSourceItem = {
+  PK: `TENANT#${string}`;
+  SK: `RSS_SOURCE#${string}`;
+  id: string;
+  userId: string;
+  url: string;
+  normalizedUrl: string;
+  status: "active" | "disabled" | "error";
+  title?: string;
+  etag?: string;
+  lastModified?: string;
+  lastFetchedAt?: string;
+  nextFetchAt?: string;
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
+  GSI2PK?: `USER#${string}#RSS_SOURCE`;
+  GSI2SK?: string;
+};
+
+export type RssItem = {
+  PK: `TENANT#${string}`;
+  SK: `RSS_ITEM#${string}`;
+  id: string;
+  sourceId: string;
+  userId: string;
+  title: string;
+  url: string;
+  guid?: string;
+  fingerprint: string;
+  publishedAt?: string;
+  content?: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: number;
+  GSI1PK?: `RSS_SOURCE#${string}`;
+  GSI1SK?: string;
+};
+
+export type RssDraftItem = {
+  PK: `TENANT#${string}`;
+  SK: `RSS_DRAFT#${string}`;
+  id: string;
+  userId: string;
+  sourceId: string;
+  sourceTitle?: string;
+  itemId: string;
+  itemTitle: string;
+  itemUrl: string;
+  target: "blog" | "x";
+  title?: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: number;
+  GSI2PK?: `USER#${string}#RSS_DRAFT`;
+  GSI2SK?: string;
+};
+
+export type RssUsageItem = {
+  PK: `TENANT#${string}`;
+  SK: `RSS_USAGE#USER#${string}#DATE#${string}`;
+  userId: string;
+  date: string;
+  summariesUsed: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: number;
+};

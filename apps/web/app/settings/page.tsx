@@ -11,12 +11,15 @@ export default async function SettingsPage() {
   const prefs = await getUserPreferences({ tenantId: session.tenantId, userId: session.userId });
   const taskVisibleCategories =
     prefs?.taskVisibleCategories ?? ["action_required"];
+  const rssGenerationTargets = prefs?.rssGenerationTargets ?? ["x"];
 
   return (
     <AdminShell email={session.email} role={session.role}>
-      <SettingsClient initialTaskVisibleCategories={taskVisibleCategories} />
+      <SettingsClient
+        initialTaskVisibleCategories={taskVisibleCategories}
+        initialRssTargets={rssGenerationTargets}
+      />
     </AdminShell>
   );
 }
-
 

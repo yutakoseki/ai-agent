@@ -77,6 +77,17 @@ function IconTasks(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconRss(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path strokeWidth="2" strokeLinecap="round" d="M4 4a16 16 0 0 1 16 16" />
+      <path strokeWidth="2" strokeLinecap="round" d="M4 10a10 10 0 0 1 10 10" />
+      <path strokeWidth="2" strokeLinecap="round" d="M4 16a4 4 0 0 1 4 4" />
+      <circle cx="5" cy="19" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function IconShield(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
@@ -134,6 +145,11 @@ export function AdminShell(props: {
         href: "/tasks",
         label: "タスク",
         icon: <IconTasks className="h-5 w-5" aria-hidden="true" />,
+      },
+      {
+        href: "/rss",
+        label: "RSS",
+        icon: <IconRss className="h-5 w-5" aria-hidden="true" />,
       },
       {
         href: "/settings",
@@ -285,4 +301,3 @@ export function AdminShell(props: {
     </div>
   );
 }
-

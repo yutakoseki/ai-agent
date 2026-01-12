@@ -1,10 +1,12 @@
 import type { MailCategory } from "@shared/mail";
+import type { RssGenerationTarget } from "@shared/rss";
 import { getItem, putItem, updateItem } from "@db/tables/user-preferences";
 
 export type UserPreferences = {
   tenantId: string;
   userId: string;
   taskVisibleCategories?: MailCategory[];
+  rssGenerationTargets?: RssGenerationTarget[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -14,6 +16,7 @@ type UserPreferencesItem = {
   SK: `USER_PREFS#USER#${string}`;
   userId: string;
   taskVisibleCategories?: MailCategory[];
+  rssGenerationTargets?: RssGenerationTarget[];
   createdAt: string;
   updatedAt: string;
 };
@@ -23,6 +26,7 @@ function mapPrefs(item: UserPreferencesItem): UserPreferences {
     tenantId: item.PK.replace("TENANT#", ""),
     userId: item.userId,
     taskVisibleCategories: item.taskVisibleCategories,
+    rssGenerationTargets: item.rssGenerationTargets,
     createdAt: new Date(item.createdAt),
     updatedAt: new Date(item.updatedAt),
   };
@@ -44,6 +48,7 @@ export async function upsertUserPreferences(params: {
   tenantId: string;
   userId: string;
   taskVisibleCategories?: MailCategory[] | null;
+  rssGenerationTargets?: RssGenerationTarget[] | null;
 }): Promise<UserPreferences> {
   const now = new Date().toISOString();
   const key = sk(params.userId);
@@ -51,6 +56,7 @@ export async function upsertUserPreferences(params: {
   const item: Omit<UserPreferencesItem, "PK" | "SK"> = {
     userId: params.userId,
     taskVisibleCategories: params.taskVisibleCategories ?? undefined,
+    rssGenerationTargets: params.rssGenerationTargets ?? undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -68,6 +74,10 @@ export async function upsertUserPreferences(params: {
       sets.push("taskVisibleCategories = :cats");
       values[":cats"] = params.taskVisibleCategories ?? null;
     }
+    if (params.rssGenerationTargets !== undefined) {
+      sets.push("rssGenerationTargets = :rssTargets");
+      values[":rssTargets"] = params.rssGenerationTargets ?? null;
+    }
 
     await updateItem(params.tenantId, key, `SET ${sets.join(", ")}`, values);
   }
@@ -76,5 +86,4 @@ export async function upsertUserPreferences(params: {
   if (!saved) throw new Error("UserPreferences not found after upsert");
   return mapPrefs(saved);
 }
-
 
