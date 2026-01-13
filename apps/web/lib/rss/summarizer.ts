@@ -414,7 +414,7 @@ async function summarizeForBlogAI(
   input: SummaryInput
 ): Promise<BlogSummary | null> {
   const articleText = await fetchArticleText(input.url, input.traceId);
-  const payload = buildAiInput(input, articleText);
+  const payload = buildAiInput(input, articleText ?? undefined);
   if (!payload.title && !payload.content && !payload.article) return null;
   const persona = buildPersonaContext(input);
 
