@@ -1,5 +1,5 @@
 import { fetchFeed } from "./fetch";
-import { summarizeForBlog, summarizeForX } from "./summarizer";
+import { summarizeForBlog, summarizeForX, shouldGenerateRssDraft } from "./summarizer";
 import { sanitizeTitle } from "./parser";
 import { normalizeUrl } from "./normalize";
 import { listSourcesByTenant, updateSource } from "@/lib/repos/rssSourceRepo";
@@ -11,6 +11,7 @@ import { listTenants } from "@/lib/repos/tenantRepo";
 import { getRssPlanLimits, type RssPlanLimits } from "./plan";
 import type { RssGenerationTarget } from "@shared/rss";
 import type { RssSourceItem } from "@db/types";
+import { logger } from "@/lib/logger";
 
 const FETCH_INTERVAL_HOURS = 6;
 const MAX_ITEMS_PER_SOURCE = 5;
@@ -77,6 +78,13 @@ async function syncSource(params: {
 }): Promise<{ newItems: number; draftsCreated: number; draftsSkipped: number }> {
   const now = new Date();
   const nextFetchAt = addHours(now, FETCH_INTERVAL_HOURS).toISOString();
+  logger.debug("rss sync start", {
+    traceId: params.traceId,
+    tenantId: params.tenantId,
+    userId: params.source.userId,
+    sourceId: params.source.id,
+    url: params.source.url,
+  });
 
   try {
     const result = await fetchFeed({
@@ -86,6 +94,11 @@ async function syncSource(params: {
     });
 
     if (result.status === "not_modified") {
+      logger.debug("rss fetch not modified", {
+        traceId: params.traceId,
+        tenantId: params.tenantId,
+        sourceId: params.source.id,
+      });
       await updateSource({
         tenantId: params.tenantId,
         sourceId: params.source.id,
@@ -99,6 +112,13 @@ async function syncSource(params: {
     }
 
     const feedTitle = sanitizeTitle(result.feed.title);
+    logger.debug("rss fetch ok", {
+      traceId: params.traceId,
+      tenantId: params.tenantId,
+      sourceId: params.source.id,
+      feedTitle,
+      items: result.feed.items.length,
+    });
     await updateSource({
       tenantId: params.tenantId,
       sourceId: params.source.id,
@@ -116,6 +136,12 @@ async function syncSource(params: {
     const candidates = sortByPublishedDesc(result.feed.items)
       .filter((item) => item.title && (item.link || item.guid))
       .slice(0, MAX_ITEMS_PER_SOURCE);
+    logger.debug("rss candidates", {
+      traceId: params.traceId,
+      tenantId: params.tenantId,
+      sourceId: params.source.id,
+      candidates: candidates.length,
+    });
 
     const newItems: Array<{ itemId: string; title: string; link: string; content?: string }> = [];
     for (const item of candidates) {
@@ -139,6 +165,13 @@ async function syncSource(params: {
         content: item.content,
         expiresAt: buildExpiresAt(ITEMS_TTL_DAYS),
       });
+      logger.debug("rss item created", {
+        traceId: params.traceId,
+        tenantId: params.tenantId,
+        sourceId: params.source.id,
+        itemId: saved.id,
+        title: saved.title,
+      });
       existingFingerprints.add(fingerprint);
       newItems.push({
         itemId: saved.id,
@@ -151,6 +184,14 @@ async function syncSource(params: {
     if (newItems.length) {
       const allItems = sortByPublishedDesc(await listItemsBySource({ sourceId: params.source.id }));
       const overflow = allItems.slice(MAX_ITEMS_PER_SOURCE);
+      if (overflow.length) {
+        logger.debug("rss overflow delete", {
+          traceId: params.traceId,
+          tenantId: params.tenantId,
+          sourceId: params.source.id,
+          overflow: overflow.length,
+        });
+      }
       for (const item of overflow) {
         await deleteItemById({ tenantId: params.tenantId, itemId: item.id });
       }
@@ -176,6 +217,27 @@ async function syncSource(params: {
 
     for (const item of newItems) {
       const content = item.content;
+      const curation = await shouldGenerateRssDraft({
+        title: item.title,
+        content,
+        url: item.link,
+        sourceTitle: feedTitle ?? params.source.title,
+        role: prefs?.rssWriterRole,
+        persona: prefs?.rssTargetPersona,
+        traceId: params.traceId,
+      });
+      if (!curation.keep) {
+        logger.debug("rss curation skipped", {
+          traceId: params.traceId,
+          tenantId: params.tenantId,
+          sourceId: params.source.id,
+          itemId: item.itemId,
+          reason: curation.reason ?? null,
+        });
+        continue;
+      }
+
+      const allowedTargets: RssGenerationTarget[] = [];
       for (const target of targets) {
         const allowed = await tryConsumeDailyQuota({
           tenantId: params.tenantId,
@@ -185,46 +247,132 @@ async function syncSource(params: {
           max: params.limits.maxSummariesPerDay,
         });
         if (!allowed.ok) {
+          logger.debug("rss quota exceeded", {
+            traceId: params.traceId,
+            tenantId: params.tenantId,
+            userId: params.source.userId,
+            sourceId: params.source.id,
+            target,
+          });
           draftsSkipped += 1;
           continue;
         }
+        allowedTargets.push(target);
+      }
 
-        if (target === "blog") {
-          const blog = summarizeForBlog({ title: item.title, content });
-          await createDraft({
+      if (allowedTargets.length === 0) continue;
+
+      try {
+        const needsBlog = allowedTargets.includes("blog") || allowedTargets.includes("x");
+        let blog: Awaited<ReturnType<typeof summarizeForBlog>> | undefined;
+        if (needsBlog) {
+          logger.debug("rss summarize start", {
+            traceId: params.traceId,
             tenantId: params.tenantId,
-            userId: params.source.userId,
             sourceId: params.source.id,
-            sourceTitle: feedTitle ?? params.source.title,
             itemId: item.itemId,
-            itemTitle: item.title,
-            itemUrl: item.link,
             target: "blog",
-            title: blog.title,
-            text: blog.text,
-            expiresAt: buildExpiresAt(DRAFTS_TTL_DAYS),
           });
-        } else {
-          const text = summarizeForX({ title: item.title, content });
-          await createDraft({
-            tenantId: params.tenantId,
-            userId: params.source.userId,
-            sourceId: params.source.id,
+          blog = await summarizeForBlog({
+            title: item.title,
+            content,
+            url: item.link,
             sourceTitle: feedTitle ?? params.source.title,
-            itemId: item.itemId,
-            itemTitle: item.title,
-            itemUrl: item.link,
-            target: "x",
-            text,
-            expiresAt: buildExpiresAt(DRAFTS_TTL_DAYS),
+            role: prefs?.rssWriterRole,
+            persona: prefs?.rssTargetPersona,
+            traceId: params.traceId,
           });
         }
-        draftsCreated += 1;
+        if (!blog) continue;
+
+        for (const target of allowedTargets) {
+          if (target === "blog") {
+            const draft = await createDraft({
+              tenantId: params.tenantId,
+              userId: params.source.userId,
+              sourceId: params.source.id,
+              sourceTitle: feedTitle ?? params.source.title,
+              itemId: item.itemId,
+              itemTitle: item.title,
+              itemUrl: item.link,
+              target: "blog",
+              title: blog.title,
+              text: blog.text,
+              expiresAt: buildExpiresAt(DRAFTS_TTL_DAYS),
+            });
+            logger.debug("rss draft created", {
+              traceId: params.traceId,
+              tenantId: params.tenantId,
+              sourceId: params.source.id,
+              itemId: item.itemId,
+              draftId: draft.id,
+              target,
+            });
+          } else {
+            logger.debug("rss summarize start", {
+              traceId: params.traceId,
+              tenantId: params.tenantId,
+              sourceId: params.source.id,
+              itemId: item.itemId,
+              target,
+            });
+            const text = await summarizeForX({
+              title: item.title,
+              content,
+              url: item.link,
+              sourceTitle: feedTitle ?? params.source.title,
+              role: prefs?.rssWriterRole,
+              persona: prefs?.rssTargetPersona,
+              postTone: prefs?.rssPostTone,
+              postFormat: prefs?.rssPostFormat,
+              traceId: params.traceId,
+              blog,
+            });
+            const draft = await createDraft({
+              tenantId: params.tenantId,
+              userId: params.source.userId,
+              sourceId: params.source.id,
+              sourceTitle: feedTitle ?? params.source.title,
+              itemId: item.itemId,
+              itemTitle: item.title,
+              itemUrl: item.link,
+              target: "x",
+              text,
+              expiresAt: buildExpiresAt(DRAFTS_TTL_DAYS),
+            });
+            logger.debug("rss draft created", {
+              traceId: params.traceId,
+              tenantId: params.tenantId,
+              sourceId: params.source.id,
+              itemId: item.itemId,
+              draftId: draft.id,
+              target,
+            });
+          }
+          draftsCreated += 1;
+        }
+      } catch (error) {
+        logger.warn("rss draft create failed", {
+          traceId: params.traceId,
+          tenantId: params.tenantId,
+          userId: params.source.userId,
+          sourceId: params.source.id,
+          itemId: item.itemId,
+          error,
+        });
+        throw error;
       }
     }
 
     return { newItems: newItems.length, draftsCreated, draftsSkipped };
   } catch (error: any) {
+    logger.warn("rss sync failed", {
+      traceId: params.traceId,
+      tenantId: params.tenantId,
+      userId: params.source.userId,
+      sourceId: params.source.id,
+      error,
+    });
     await updateSource({
       tenantId: params.tenantId,
       sourceId: params.source.id,

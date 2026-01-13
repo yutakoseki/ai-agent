@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { AdminShell } from "@/app/admin/AdminShell";
 import { listSourcesByUser } from "@/lib/repos/rssSourceRepo";
 import { listDraftsByUser } from "@/lib/repos/rssDraftRepo";
+import { getUserPreferences } from "@/lib/repos/userPreferencesRepo";
 import { RssClient } from "./RssClient";
 
 export default async function RssPage() {
@@ -17,6 +18,15 @@ export default async function RssPage() {
   const sortedDrafts = drafts.sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
+  const prefs = await getUserPreferences({
+    tenantId: session.tenantId,
+    userId: session.userId,
+  });
+  const rssGenerationTargets = prefs?.rssGenerationTargets ?? ["x"];
+  const rssWriterRole = prefs?.rssWriterRole ?? "";
+  const rssTargetPersona = prefs?.rssTargetPersona ?? "";
+  const rssPostTone = prefs?.rssPostTone ?? "";
+  const rssPostFormat = prefs?.rssPostFormat ?? "";
 
   const viewSources = sortedSources.map((source) => ({
     id: source.id,
@@ -42,7 +52,15 @@ export default async function RssPage() {
 
   return (
     <AdminShell email={session.email} role={session.role}>
-      <RssClient sources={viewSources} drafts={viewDrafts} />
+      <RssClient
+        sources={viewSources}
+        drafts={viewDrafts}
+        initialRssTargets={rssGenerationTargets}
+        initialRssWriterRole={rssWriterRole}
+        initialRssTargetPersona={rssTargetPersona}
+        initialRssPostTone={rssPostTone}
+        initialRssPostFormat={rssPostFormat}
+      />
     </AdminShell>
   );
 }

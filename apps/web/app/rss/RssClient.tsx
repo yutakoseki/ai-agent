@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { RssGenerationTarget } from "@shared/rss";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -29,11 +30,22 @@ type ViewDraft = {
 
 type Status = "idle" | "saving" | "success" | "error";
 
+const DATE_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
 function formatDate(iso?: string | null): string {
   if (!iso) return "-";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString();
+  return DATE_FORMATTER.format(date);
 }
 
 function normalizeSource(raw: any): ViewSource {
@@ -49,18 +61,47 @@ function normalizeSource(raw: any): ViewSource {
   };
 }
 
-export function RssClient(props: { sources: ViewSource[]; drafts: ViewDraft[] }) {
+export function RssClient(props: {
+  sources: ViewSource[];
+  drafts: ViewDraft[];
+  initialRssTargets: RssGenerationTarget[];
+  initialRssWriterRole: string;
+  initialRssTargetPersona: string;
+  initialRssPostTone: string;
+  initialRssPostFormat: string;
+}) {
   const [sources, setSources] = useState<ViewSource[]>(props.sources);
   const [drafts] = useState<ViewDraft[]>(props.drafts);
   const [filter, setFilter] = useState<"all" | "blog" | "x">("all");
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [styleStatus, setStyleStatus] = useState<Status>("idle");
+  const [styleMessage, setStyleMessage] = useState<string | null>(null);
+  const [writerRole, setWriterRole] = useState(props.initialRssWriterRole);
+  const [targetPersona, setTargetPersona] = useState(props.initialRssTargetPersona);
+  const [postTone, setPostTone] = useState(props.initialRssPostTone);
+  const [postFormat, setPostFormat] = useState(props.initialRssPostFormat);
+  const [rssSelected, setRssSelected] = useState<Record<RssGenerationTarget, boolean>>(() => {
+    const init = new Set(props.initialRssTargets);
+    return {
+      blog: init.has("blog"),
+      x: init.has("x"),
+    };
+  });
 
   const filteredDrafts = useMemo(() => {
     if (filter === "all") return drafts;
     return drafts.filter((draft) => draft.target === filter);
   }, [drafts, filter]);
+
+  const rssTargets = useMemo(
+    () =>
+      (Object.keys(rssSelected) as RssGenerationTarget[]).filter(
+        (k) => rssSelected[k]
+      ),
+    [rssSelected]
+  );
 
   async function addSource() {
     const trimmed = url.trim();
@@ -120,6 +161,57 @@ export function RssClient(props: { sources: ViewSource[]; drafts: ViewDraft[] })
     } catch {
       // ignore
     }
+  }
+
+  async function saveRssStyle() {
+    setStyleStatus("saving");
+    setStyleMessage(null);
+    if (rssTargets.length === 0) {
+      setStyleStatus("error");
+      setStyleMessage("少なくとも1つの出力先を選択してください。");
+      return;
+    }
+    if (writerRole.length > 200) {
+      setStyleStatus("error");
+      setStyleMessage("ロールは200文字以内で入力してください。");
+      return;
+    }
+    if (targetPersona.length > 200) {
+      setStyleStatus("error");
+      setStyleMessage("ペルソナは200文字以内で入力してください。");
+      return;
+    }
+    if (postTone.length > 200) {
+      setStyleStatus("error");
+      setStyleMessage("テイストは200文字以内で入力してください。");
+      return;
+    }
+    if (postFormat.length > 500) {
+      setStyleStatus("error");
+      setStyleMessage("出力フォーマットは500文字以内で入力してください。");
+      return;
+    }
+
+    const res = await fetch("/api/rss/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        generationTargets: rssTargets,
+        writerRole,
+        targetPersona,
+        postTone,
+        postFormat,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStyleStatus("error");
+      setStyleMessage(data?.message || "保存に失敗しました。");
+      return;
+    }
+    setStyleStatus("success");
+    setStyleMessage("保存しました。新規生成に反映されます。");
   }
 
   return (
@@ -207,6 +299,90 @@ export function RssClient(props: { sources: ViewSource[]; drafts: ViewDraft[] })
               ))}
             </div>
           )}
+        </div>
+      </Card>
+
+      <Card title="投稿スタイル" className="border border-ink/10 bg-surface/90 shadow-panel">
+        <div className="space-y-3 text-sm">
+          <div className="flex flex-wrap gap-2">
+            {(["x", "blog"] as RssGenerationTarget[]).map((k) => (
+              <label
+                key={k}
+                className="inline-flex cursor-pointer select-none items-center gap-2 rounded-xl border border-ink/10 bg-secondary px-3 py-2 text-ink"
+              >
+                <input
+                  type="checkbox"
+                  checked={rssSelected[k]}
+                  onChange={(e) =>
+                    setRssSelected((prev) => ({ ...prev, [k]: e.target.checked }))
+                  }
+                />
+                <span className="font-medium">{k === "x" ? "X" : "ブログ"}</span>
+              </label>
+            ))}
+          </div>
+          <label className="grid gap-1 text-ink">
+            <span className="font-medium">書き手のロール</span>
+            <Input
+              value={writerRole}
+              onChange={(e) => setWriterRole(e.target.value)}
+              placeholder="例: AIプロダクトの戦略担当"
+              className="h-11"
+            />
+          </label>
+          <label className="grid gap-1 text-ink">
+            <span className="font-medium">対象ペルソナ</span>
+            <textarea
+              className="min-h-[120px] w-full rounded-xl border border-ink/10 bg-secondary px-3 py-2 text-sm text-ink placeholder:text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-secondary"
+              value={targetPersona}
+              onChange={(e) => setTargetPersona(e.target.value)}
+              placeholder={"例:\n国内SaaSのCTO。意思決定者で、効率と安全性に関心がある。"}
+            />
+          </label>
+          <label className="grid gap-1 text-ink">
+            <span className="font-medium">ポストのテイスト</span>
+            <Input
+              value={postTone}
+              onChange={(e) => setPostTone(e.target.value)}
+              placeholder="例: 実務に使える視点で、簡潔かつフレンドリー"
+              className="h-11"
+            />
+          </label>
+          <label className="grid gap-1 text-ink">
+            <span className="font-medium">出力フォーマット</span>
+            <textarea
+              className="min-h-[120px] w-full rounded-xl border border-ink/10 bg-secondary px-3 py-2 text-sm text-ink placeholder:text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-secondary"
+              value={postFormat}
+              onChange={(e) => setPostFormat(e.target.value)}
+              placeholder={"例:\n1文目: 事実の要約\n2文目: 重要性\n3文目: 具体例/たとえ"}
+            />
+          </label>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              className="h-10 rounded-xl"
+              onClick={saveRssStyle}
+              disabled={styleStatus === "saving"}
+            >
+              {styleStatus === "saving" ? "保存中..." : "保存"}
+            </Button>
+          </div>
+          {styleMessage ? (
+            <div
+              className={`rounded-xl border px-3 py-2 text-sm ${
+                styleStatus === "success"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : styleStatus === "error"
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-ink/10 bg-surface-raised/60 text-ink-soft"
+              }`}
+            >
+              {styleMessage}
+            </div>
+          ) : null}
+          <p className="text-xs text-ink-soft">
+            新しく作成される下書きから反映されます。
+          </p>
         </div>
       </Card>
 

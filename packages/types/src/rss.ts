@@ -48,4 +48,8 @@ export interface RssDraftListResponse {
 
 export interface RssPreferences {
   generationTargets: RssGenerationTarget[];
+  writerRole?: string;
+  targetPersona?: string;
+  postTone?: string;
+  postFormat?: string;
 }

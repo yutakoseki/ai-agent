@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import type { MailCategory } from "@shared/mail";
-import type { RssGenerationTarget } from "@shared/rss";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -19,7 +18,6 @@ type Status = "idle" | "saving" | "success" | "error";
 
 export function SettingsClient(props: {
   initialTaskVisibleCategories: MailCategory[];
-  initialRssTargets: RssGenerationTarget[];
 }) {
   const [selected, setSelected] = useState<Record<MailCategory, boolean>>(() => {
     const init = new Set(props.initialTaskVisibleCategories);
@@ -35,27 +33,9 @@ export function SettingsClient(props: {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
 
-  const [rssSelected, setRssSelected] = useState<Record<RssGenerationTarget, boolean>>(() => {
-    const init = new Set(props.initialRssTargets);
-    return {
-      blog: init.has("blog"),
-      x: init.has("x"),
-    };
-  });
-  const [rssStatus, setRssStatus] = useState<Status>("idle");
-  const [rssMessage, setRssMessage] = useState<string | null>(null);
-
   const chosen = useMemo(
     () => (Object.keys(selected) as MailCategory[]).filter((k) => selected[k]),
     [selected]
-  );
-
-  const rssTargets = useMemo(
-    () =>
-      (Object.keys(rssSelected) as RssGenerationTarget[]).filter(
-        (k) => rssSelected[k]
-      ),
-    [rssSelected]
   );
 
   async function save() {
@@ -81,31 +61,6 @@ export function SettingsClient(props: {
     }
     setStatus("success");
     setMessage("保存しました。/tasks の表示に反映されます。");
-  }
-
-  async function saveRssTargets() {
-    setRssStatus("saving");
-    setRssMessage(null);
-    if (rssTargets.length === 0) {
-      setRssStatus("error");
-      setRssMessage("少なくとも1つの出力先を選択してください。");
-      return;
-    }
-
-    const res = await fetch("/api/rss/preferences", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ generationTargets: rssTargets }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setRssStatus("error");
-      setRssMessage(data?.message || "保存に失敗しました。");
-      return;
-    }
-    setRssStatus("success");
-    setRssMessage("保存しました。新規生成に反映されます。");
   }
 
   return (
@@ -158,51 +113,6 @@ export function SettingsClient(props: {
         </div>
       </Card>
 
-      <Card title="RSS要約の生成先" className="border border-ink/10 bg-surface/90 shadow-panel">
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2 text-sm">
-            {(["x", "blog"] as RssGenerationTarget[]).map((k) => (
-              <label
-                key={k}
-                className="inline-flex cursor-pointer select-none items-center gap-2 rounded-xl border border-ink/10 bg-secondary px-3 py-2 text-ink"
-              >
-                <input
-                  type="checkbox"
-                  checked={rssSelected[k]}
-                  onChange={(e) =>
-                    setRssSelected((prev) => ({ ...prev, [k]: e.target.checked }))
-                  }
-                />
-                <span className="font-medium">{k === "x" ? "X" : "ブログ"}</span>
-              </label>
-            ))}
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              className="h-10 rounded-xl"
-              type="button"
-              onClick={saveRssTargets}
-              disabled={rssStatus === "saving"}
-            >
-              {rssStatus === "saving" ? "保存中..." : "保存"}
-            </Button>
-          </div>
-          {rssMessage ? (
-            <div
-              className={`rounded-xl border px-3 py-2 text-sm ${
-                rssStatus === "success"
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : rssStatus === "error"
-                    ? "border-accent/40 bg-accent/10 text-accent"
-                    : "border-ink/10 bg-surface-raised/60 text-ink-soft"
-              }`}
-            >
-              {rssMessage}
-            </div>
-          ) : null}
-        </div>
-      </Card>
     </div>
   );
 }
-
