@@ -51,6 +51,12 @@ export const envSchema = z.object({
   OAUTH_TOKEN_ENC_KEY: z.string().optional(),
   OAUTH_STATE_SECRET: z.string().optional(),
 
+  // X API
+  X_API_KEY: z.string().optional(),
+  X_API_SECRET: z.string().optional(),
+  X_ACCESS_TOKEN: z.string().optional(),
+  X_ACCESS_TOKEN_SECRET: z.string().optional(),
+
   // Web Push
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),

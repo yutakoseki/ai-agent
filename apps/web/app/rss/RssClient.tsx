@@ -5,6 +5,7 @@ import type { RssGenerationTarget } from "@shared/rss";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import type { XPostBatchView } from "@/lib/x-posts/serializer";
 
 type ViewSource = {
   id: string;
@@ -29,6 +30,7 @@ type ViewDraft = {
 };
 
 type Status = "idle" | "saving" | "success" | "error";
+type PostStatus = "idle" | "posting" | "posted" | "error";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
   year: "numeric",
@@ -69,15 +71,23 @@ export function RssClient(props: {
   initialRssTargetPersona: string;
   initialRssPostTone: string;
   initialRssPostFormat: string;
+  initialXPostBatches: XPostBatchView[];
 }) {
   const [sources, setSources] = useState<ViewSource[]>(props.sources);
   const [drafts] = useState<ViewDraft[]>(props.drafts);
+  const [xPostBatches, setXPostBatches] = useState<XPostBatchView[]>(
+    props.initialXPostBatches
+  );
   const [filter, setFilter] = useState<"all" | "blog" | "x">("all");
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [styleStatus, setStyleStatus] = useState<Status>("idle");
   const [styleMessage, setStyleMessage] = useState<string | null>(null);
+  const [xPostStatus, setXPostStatus] = useState<Status>("idle");
+  const [xPostMessage, setXPostMessage] = useState<string | null>(null);
+  const [postStatus, setPostStatus] = useState<Record<string, PostStatus>>({});
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [writerRole, setWriterRole] = useState(props.initialRssWriterRole);
   const [targetPersona, setTargetPersona] = useState(props.initialRssTargetPersona);
   const [postTone, setPostTone] = useState(props.initialRssPostTone);
@@ -212,6 +222,75 @@ export function RssClient(props: {
     }
     setStyleStatus("success");
     setStyleMessage("保存しました。新規生成に反映されます。");
+  }
+
+  async function generateXPosts() {
+    setXPostStatus("saving");
+    setXPostMessage(null);
+    const res = await fetch("/api/x-posts/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setXPostStatus("error");
+      setXPostMessage(data?.message || "生成に失敗しました。");
+      return;
+    }
+    if (data?.batch) {
+      setXPostBatches((prev) => [data.batch, ...prev]);
+    }
+    setXPostStatus("success");
+    setXPostMessage("ポスト候補を生成しました。");
+  }
+
+  async function postToX(batchId: string, rank: number) {
+    const key = `${batchId}:${rank}`;
+    setPostStatus((prev) => ({ ...prev, [key]: "posting" }));
+    const res = await fetch(`/api/x-posts/${batchId}/post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ rank }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setPostStatus((prev) => ({ ...prev, [key]: "error" }));
+      setXPostStatus("error");
+      setXPostMessage(data?.message || "投稿に失敗しました。");
+      return;
+    }
+    setPostStatus((prev) => ({ ...prev, [key]: "posted" }));
+    setXPostStatus("success");
+    setXPostMessage("Xに投稿しました。");
+    setXPostBatches((prev) =>
+      prev.map((batch) => {
+        if (batch.id !== batchId) return batch;
+        const posted = batch.posted ? [...batch.posted] : [];
+        posted.push({
+          rank,
+          tweetId: String(data?.tweetId ?? ""),
+          postedAt: new Date().toISOString(),
+        });
+        return { ...batch, posted };
+      })
+    );
+  }
+
+  async function copyUrls(urls: string[], key: string) {
+    const text = urls.filter(Boolean).join("\n");
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => {
+        setCopiedKey((current) => (current === key ? null : current));
+      }, 1500);
+    } catch {
+      // ignore
+    }
   }
 
   return (
@@ -383,6 +462,122 @@ export function RssClient(props: {
           <p className="text-xs text-ink-soft">
             新しく作成される下書きから反映されます。
           </p>
+        </div>
+      </Card>
+
+      <Card title="Xポスト生成" className="border border-ink/10 bg-surface/90 shadow-panel">
+        <div className="space-y-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-ink-soft">
+              システムプロンプトで今日の候補を生成します。
+            </p>
+            <Button
+              type="button"
+              className="h-10 rounded-xl"
+              onClick={generateXPosts}
+              disabled={xPostStatus === "saving"}
+            >
+              {xPostStatus === "saving" ? "生成中..." : "ポスト生成"}
+            </Button>
+          </div>
+          {xPostMessage ? (
+            <div
+              className={`rounded-xl border px-3 py-2 text-sm ${
+                xPostStatus === "success"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : xPostStatus === "error"
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-ink/10 bg-surface-raised/60 text-ink-soft"
+              }`}
+            >
+              {xPostMessage}
+            </div>
+          ) : null}
+          {xPostBatches.length === 0 ? (
+            <p className="text-sm text-ink-soft">まだ生成されていません。</p>
+          ) : (
+            <div className="space-y-3">
+              {xPostBatches.map((batch) => (
+                <div
+                  key={batch.id}
+                  className="space-y-3 rounded-xl border border-ink/10 bg-surface-raised/60 p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-soft">
+                    <span>対象日: {batch.date}</span>
+                    <span>生成: {formatDate(batch.createdAt)}</span>
+                  </div>
+                  <div className="space-y-3">
+                    {batch.topics.map((topic) => {
+                      const key = `${batch.id}:${topic.rank}`;
+                      const wasPosted = batch.posted?.some(
+                        (entry) => entry.rank === topic.rank
+                      );
+                      const currentStatus = postStatus[key] ?? (wasPosted ? "posted" : "idle");
+                      const postLabel =
+                        currentStatus === "posting"
+                          ? "投稿中..."
+                          : currentStatus === "posted"
+                            ? "投稿済み"
+                            : currentStatus === "error"
+                              ? "再投稿"
+                              : "Xに投稿";
+                      const copyLabel =
+                        copiedKey === key ? "コピー済み" : "URLコピー";
+
+                      return (
+                        <div
+                          key={key}
+                          className="space-y-2 rounded-xl border border-ink/10 bg-surface/80 p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-soft">
+                            <span>
+                              #{topic.rank} / {topic.importance}
+                            </span>
+                            <span>{topic.sourceType}</span>
+                          </div>
+                          <div className="text-sm font-semibold text-ink">
+                            {topic.title}
+                          </div>
+                          <pre className="whitespace-pre-wrap text-sm text-ink">
+                            {topic.summary}
+                          </pre>
+                          <div className="flex flex-wrap gap-2 text-xs text-ink-soft">
+                            <span>{topic.postTypeName}</span>
+                            {topic.publishedDate ? (
+                              <span>公開日 {topic.publishedDate}</span>
+                            ) : null}
+                          </div>
+                          {topic.urls.length ? (
+                            <div className="break-all text-xs text-ink-soft">
+                              {topic.urls.join(" ")}
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                              type="button"
+                              className="h-9 rounded-xl"
+                              onClick={() => copyUrls(topic.urls, key)}
+                              disabled={topic.urls.length === 0}
+                            >
+                              {copyLabel}
+                            </Button>
+                            <Button
+                              type="button"
+                              className="h-9 rounded-xl"
+                              onClick={() => postToX(batch.id, topic.rank)}
+                              disabled={currentStatus === "posting" || currentStatus === "posted"}
+                            >
+                              {postLabel}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
 

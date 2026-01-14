@@ -22,5 +22,8 @@ export * from "./mail";
 // RSS関連
 export * from "./rss";
 
+// Xポスト関連
+export * from "./x-posts";
+
 // エラー関連
 export * from "./error";

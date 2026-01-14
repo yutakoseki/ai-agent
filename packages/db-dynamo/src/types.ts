@@ -245,3 +245,21 @@ export type RssUsageItem = {
   updatedAt: string;
   expiresAt?: number;
 };
+
+export type XPostBatchItem = {
+  PK: `TENANT#${string}`;
+  SK: `X_POST_BATCH#${string}`;
+  id: string;
+  userId: string;
+  date: string;
+  payloadJson: string;
+  posted?: Array<{
+    rank: number;
+    tweetId: string;
+    postedAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  GSI2PK?: `USER#${string}#X_POST_BATCH`;
+  GSI2SK?: string;
+};

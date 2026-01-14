@@ -55,6 +55,11 @@ export async function GET(_req: NextRequest) {
         // AI
         OPENAI_API_KEY: pickBool("OPENAI_API_KEY"),
         OPENAI_MODEL: pickBool("OPENAI_MODEL"),
+        // X
+        X_API_KEY: pickBool("X_API_KEY"),
+        X_API_SECRET: pickBool("X_API_SECRET"),
+        X_ACCESS_TOKEN: pickBool("X_ACCESS_TOKEN"),
+        X_ACCESS_TOKEN_SECRET: pickBool("X_ACCESS_TOKEN_SECRET"),
       },
       // 直接参照（ビルド時埋め込みが効いているか）の確認用
       envDirect: {
@@ -70,5 +75,4 @@ export async function GET(_req: NextRequest) {
     { status: 200 }
   );
 }
-
 

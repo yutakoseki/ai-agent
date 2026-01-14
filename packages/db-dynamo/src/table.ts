@@ -17,7 +17,8 @@ export type TableKind =
   | "rss_sources"
   | "rss_items"
   | "rss_drafts"
-  | "rss_usage";
+  | "rss_usage"
+  | "x_post_batches";
 
 /**
  * マルチテーブル移行用のテーブル名解決。
@@ -33,6 +34,5 @@ export const TABLE_NAME = BASE_TABLE_NAME;
 
 export const GSI1_NAME = "GSI1";
 export const GSI2_NAME = "GSI2";
-
 
 

@@ -20,6 +20,6 @@ export * as rssSourcesDb from "./tables/rss-sources";
 export * as rssItemsDb from "./tables/rss-items";
 export * as rssDraftsDb from "./tables/rss-drafts";
 export * as rssUsageDb from "./tables/rss-usage";
-
+export * as xPostBatchesDb from "./tables/x-post-batches";
 
 

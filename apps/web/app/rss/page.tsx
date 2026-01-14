@@ -4,6 +4,8 @@ import { AdminShell } from "@/app/admin/AdminShell";
 import { listSourcesByUser } from "@/lib/repos/rssSourceRepo";
 import { listDraftsByUser } from "@/lib/repos/rssDraftRepo";
 import { getUserPreferences } from "@/lib/repos/userPreferencesRepo";
+import { listXPostBatchesByUser } from "@/lib/repos/xPostBatchRepo";
+import { toViewBatch } from "@/lib/x-posts/serializer";
 import { RssClient } from "./RssClient";
 
 export default async function RssPage() {
@@ -16,6 +18,10 @@ export default async function RssPage() {
   );
   const drafts = await listDraftsByUser({ userId: session.userId });
   const sortedDrafts = drafts.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
+  const batches = await listXPostBatchesByUser({ userId: session.userId });
+  const sortedBatches = batches.sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
   const prefs = await getUserPreferences({
@@ -49,6 +55,7 @@ export default async function RssPage() {
     text: draft.text,
     createdAt: draft.createdAt.toISOString(),
   }));
+  const viewBatches = sortedBatches.map(toViewBatch);
 
   return (
     <AdminShell email={session.email} role={session.role}>
@@ -60,6 +67,7 @@ export default async function RssPage() {
         initialRssTargetPersona={rssTargetPersona}
         initialRssPostTone={rssPostTone}
         initialRssPostFormat={rssPostFormat}
+        initialXPostBatches={viewBatches}
       />
     </AdminShell>
   );
