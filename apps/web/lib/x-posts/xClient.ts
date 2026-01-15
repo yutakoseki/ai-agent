@@ -1,64 +1,36 @@
-import { createHmac, randomBytes } from "crypto";
 import { AppError } from "@shared/error";
 import { logger } from "@/lib/logger";
+import { buildOAuthHeader, buildSignature, createNonce, percentEncode } from "./oauth1";
 
 const API_BASE = "https://api.twitter.com/2/tweets";
 
-function percentEncode(input: string): string {
-  return encodeURIComponent(input)
-    .replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
-}
-
-function createNonce(): string {
-  return randomBytes(16).toString("hex");
-}
-
-function buildSignature(params: Record<string, string>, method: string, baseUrl: string, key: string) {
-  const sorted = Object.entries(params).sort(([aKey, aVal], [bKey, bVal]) => {
-    if (aKey === bKey) return aVal.localeCompare(bVal);
-    return aKey.localeCompare(bKey);
-  });
-  const parameterString = sorted
-    .map(([k, v]) => `${percentEncode(k)}=${percentEncode(v)}`)
-    .join("&");
-  const baseString = [
-    method.toUpperCase(),
-    percentEncode(baseUrl),
-    percentEncode(parameterString),
-  ].join("&");
-  return createHmac("sha1", key).update(baseString).digest("base64");
-}
-
-function buildOAuthHeader(params: Record<string, string>): string {
-  const header = Object.entries(params)
-    .sort(([aKey], [bKey]) => aKey.localeCompare(bKey))
-    .map(([k, v]) => `${percentEncode(k)}="${percentEncode(v)}"`)
-    .join(", ");
-  return `OAuth ${header}`;
-}
-
-function getXCredentials() {
+function getXAppCredentials() {
   const consumerKey = process.env.X_API_KEY || "";
   const consumerSecret = process.env.X_API_SECRET || "";
-  const accessToken = process.env.X_ACCESS_TOKEN || "";
-  const accessTokenSecret = process.env.X_ACCESS_TOKEN_SECRET || "";
 
-  if (!consumerKey || !consumerSecret || !accessToken || !accessTokenSecret) {
+  if (!consumerKey || !consumerSecret) {
     throw new AppError("BAD_REQUEST", "X API の認証情報が未設定です");
   }
 
-  return { consumerKey, consumerSecret, accessToken, accessTokenSecret };
+  return { consumerKey, consumerSecret };
 }
 
 export async function postTweet(params: {
   text: string;
   traceId?: string;
   replyToTweetId?: string;
+  accessToken?: string;
+  accessTokenSecret?: string;
 }): Promise<{ id: string; text: string }> {
-  const { consumerKey, consumerSecret, accessToken, accessTokenSecret } = getXCredentials();
+  const { consumerKey, consumerSecret } = getXAppCredentials();
+  const accessToken = params.accessToken ?? process.env.X_ACCESS_TOKEN ?? "";
+  const accessTokenSecret = params.accessTokenSecret ?? process.env.X_ACCESS_TOKEN_SECRET ?? "";
   const text = String(params.text ?? "").trim();
   if (!text) {
     throw new AppError("BAD_REQUEST", "投稿本文が空です");
+  }
+  if (!accessToken || !accessTokenSecret) {
+    throw new AppError("BAD_REQUEST", "X連携が必要です");
   }
 
   const oauthParams: Record<string, string> = {

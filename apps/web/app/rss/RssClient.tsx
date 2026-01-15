@@ -72,12 +72,16 @@ export function RssClient(props: {
   initialRssPostTone: string;
   initialRssPostFormat: string;
   initialXPostBatches: XPostBatchView[];
+  xAccountConnected: boolean;
+  xAccountScreenName?: string;
 }) {
   const [sources, setSources] = useState<ViewSource[]>(props.sources);
   const [drafts] = useState<ViewDraft[]>(props.drafts);
   const [xPostBatches, setXPostBatches] = useState<XPostBatchView[]>(
     props.initialXPostBatches
   );
+  const xConnected = props.xAccountConnected;
+  const xScreenName = props.xAccountScreenName;
   const [filter, setFilter] = useState<"all" | "blog" | "x">("all");
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -247,6 +251,11 @@ export function RssClient(props: {
   }
 
   async function postToX(batchId: string, rank: number) {
+    if (!xConnected) {
+      setXPostStatus("error");
+      setXPostMessage("X連携が必要です。");
+      return;
+    }
     const key = `${batchId}:${rank}`;
     setPostStatus((prev) => ({ ...prev, [key]: "posting" }));
     const res = await fetch(`/api/x-posts/${batchId}/post`, {
@@ -468,17 +477,36 @@ export function RssClient(props: {
       <Card title="Xポスト生成" className="border border-ink/10 bg-surface/90 shadow-panel">
         <div className="space-y-3 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-ink-soft">
-              システムプロンプトで今日の候補を生成します。
-            </p>
-            <Button
-              type="button"
-              className="h-10 rounded-xl"
-              onClick={generateXPosts}
-              disabled={xPostStatus === "saving"}
-            >
-              {xPostStatus === "saving" ? "生成中..." : "ポスト生成"}
-            </Button>
+            <div className="space-y-1">
+              <p className="text-xs text-ink-soft">
+                システムプロンプトで今日の候補を生成します。
+              </p>
+              <div className="text-xs text-ink-soft">
+                X連携:{" "}
+                <span className="font-semibold text-ink">
+                  {xConnected ? `連携済み${xScreenName ? ` @${xScreenName}` : ""}` : "未連携"}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                className="h-10 rounded-xl"
+                onClick={() => {
+                  window.location.href = "/api/auth/x?redirect=/rss";
+                }}
+              >
+                {xConnected ? "再連携" : "X連携"}
+              </Button>
+              <Button
+                type="button"
+                className="h-10 rounded-xl"
+                onClick={generateXPosts}
+                disabled={xPostStatus === "saving"}
+              >
+                {xPostStatus === "saving" ? "生成中..." : "ポスト生成"}
+              </Button>
+            </div>
           </div>
           {xPostMessage ? (
             <div
@@ -513,14 +541,17 @@ export function RssClient(props: {
                         (entry) => entry.rank === topic.rank
                       );
                       const currentStatus = postStatus[key] ?? (wasPosted ? "posted" : "idle");
-                      const postLabel =
-                        currentStatus === "posting"
+                      const postLabel = !xConnected
+                        ? "連携が必要"
+                        : currentStatus === "posting"
                           ? "投稿中..."
                           : currentStatus === "posted"
                             ? "投稿済み"
                             : currentStatus === "error"
                               ? "再投稿"
                               : "Xに投稿";
+                      const postDisabled =
+                        !xConnected || currentStatus === "posting" || currentStatus === "posted";
                       const copyLabel =
                         copiedKey === key ? "コピー済み" : "URLコピー";
 
@@ -565,7 +596,7 @@ export function RssClient(props: {
                               type="button"
                               className="h-9 rounded-xl"
                               onClick={() => postToX(batch.id, topic.rank)}
-                              disabled={currentStatus === "posting" || currentStatus === "posted"}
+                              disabled={postDisabled}
                             >
                               {postLabel}
                             </Button>

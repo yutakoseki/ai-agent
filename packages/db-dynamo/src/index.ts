@@ -21,5 +21,5 @@ export * as rssItemsDb from "./tables/rss-items";
 export * as rssDraftsDb from "./tables/rss-drafts";
 export * as rssUsageDb from "./tables/rss-usage";
 export * as xPostBatchesDb from "./tables/x-post-batches";
-
+export * as xAccountsDb from "./tables/x-accounts";
 

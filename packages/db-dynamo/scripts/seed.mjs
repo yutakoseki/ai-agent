@@ -27,6 +27,7 @@ const MULTI_TABLE_SUFFIXES = [
   'rss_drafts',
   'rss_usage',
   'x_post_batches',
+  'x_accounts',
 ];
 
 function getTableNames() {

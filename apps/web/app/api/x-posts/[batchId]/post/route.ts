@@ -3,6 +3,8 @@ import { AppError } from "@shared/error";
 import { requireAuth } from "@/lib/middleware/auth";
 import { handleError } from "@/lib/middleware/error";
 import { requireCsrf } from "@/lib/middleware/csrf";
+import { decryptSecret } from "@/lib/mail/tokenVault";
+import { getXAccountByUser } from "@/lib/repos/xAccountRepo";
 import { getXPostBatchById, appendXPostBatchPosted } from "@/lib/repos/xPostBatchRepo";
 import { postTweet } from "@/lib/x-posts/xClient";
 
@@ -44,7 +46,20 @@ export async function POST(request: NextRequest, contextParams: { params: { batc
       throw new AppError("BAD_REQUEST", "既に投稿済みです");
     }
 
-    const posted = await postTweet({ text: topic.summary, traceId: context.traceId });
+    const account = await getXAccountByUser({
+      tenantId: context.session.tenantId,
+      userId: context.session.userId,
+    });
+    if (!account?.accessTokenEnc || !account.accessTokenSecretEnc) {
+      throw new AppError("BAD_REQUEST", "X連携が必要です");
+    }
+
+    const posted = await postTweet({
+      text: topic.summary,
+      traceId: context.traceId,
+      accessToken: decryptSecret(account.accessTokenEnc),
+      accessTokenSecret: decryptSecret(account.accessTokenSecretEnc),
+    });
     await appendXPostBatchPosted({
       tenantId: context.session.tenantId,
       batchId,

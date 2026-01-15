@@ -3,7 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 export type OAuthState = {
   tenantId: string;
   userId: string;
-  provider: "gmail" | "outlook";
+  provider: "gmail" | "outlook" | "x";
   redirect?: string;
 };
 
@@ -32,4 +32,3 @@ export async function verifyOAuthState(token: string): Promise<OAuthState | null
     return null;
   }
 }
-

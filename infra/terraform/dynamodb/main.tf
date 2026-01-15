@@ -89,6 +89,7 @@ locals {
     rss_drafts               = "${local.table_name}-rss_drafts"
     rss_usage                = "${local.table_name}-rss_usage"
     x_post_batches           = "${local.table_name}-x_post_batches"
+    x_accounts               = "${local.table_name}-x_accounts"
   }
   tags = {
     Project     = var.project
@@ -1038,6 +1039,69 @@ resource "aws_dynamodb_table" "x_post_batches" {
   tags = merge(local.tags, { TableRole = "x_post_batches" })
 }
 
+resource "aws_dynamodb_table" "x_accounts" {
+  count          = var.enable_multi_tables ? 1 : 0
+  name           = local.multi_table_names.x_accounts
+  billing_mode   = var.dynamodb_billing_mode
+  read_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+  write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+
+  hash_key  = "PK"
+  range_key = "SK"
+
+  attribute {
+    name = "PK"
+    type = "S"
+  }
+  attribute {
+    name = "SK"
+    type = "S"
+  }
+  attribute {
+    name = "GSI1PK"
+    type = "S"
+  }
+  attribute {
+    name = "GSI1SK"
+    type = "S"
+  }
+  attribute {
+    name = "GSI2PK"
+    type = "S"
+  }
+  attribute {
+    name = "GSI2SK"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "GSI1"
+    hash_key        = "GSI1PK"
+    range_key       = "GSI1SK"
+    projection_type = "ALL"
+    read_capacity   = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+    write_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+  }
+
+  global_secondary_index {
+    name            = "GSI2"
+    hash_key        = "GSI2PK"
+    range_key       = "GSI2SK"
+    projection_type = "ALL"
+    read_capacity   = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+    write_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+  server_side_encryption {
+    enabled     = true
+    kms_key_arn = aws_kms_key.dynamodb.arn
+  }
+  tags = merge(local.tags, { TableRole = "x_accounts" })
+}
+
 locals {
   legacy_table_arns = var.keep_legacy_single_table ? [aws_dynamodb_table.legacy["single"].arn] : []
   dynamodb_table_arns = concat(
@@ -1060,6 +1124,7 @@ locals {
       aws_dynamodb_table.rss_drafts[0].arn,
       aws_dynamodb_table.rss_usage[0].arn,
       aws_dynamodb_table.x_post_batches[0].arn,
+      aws_dynamodb_table.x_accounts[0].arn,
     ] : []
   )
   dynamodb_resource_arns = concat(

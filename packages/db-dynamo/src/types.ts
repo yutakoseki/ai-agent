@@ -263,3 +263,19 @@ export type XPostBatchItem = {
   GSI2PK?: `USER#${string}#X_POST_BATCH`;
   GSI2SK?: string;
 };
+
+export type XAccountItem = {
+  PK: `TENANT#${string}`;
+  SK: `X_ACCOUNT#USER#${string}`;
+  userId: string;
+  status: "pending" | "connected";
+  requestToken?: string;
+  requestTokenSecretEnc?: string;
+  requestTokenExpiresAt?: string;
+  accessTokenEnc?: string;
+  accessTokenSecretEnc?: string;
+  xUserId?: string;
+  screenName?: string;
+  createdAt: string;
+  updatedAt: string;
+};
