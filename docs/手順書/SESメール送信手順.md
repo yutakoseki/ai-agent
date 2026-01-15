@@ -88,3 +88,5 @@ SESコンソールから **本番リクエスト（Production access）** を行
 - `EMAIL_FROM`: 送信元（SESで検証済みのFromを推奨）
 - `TENANT_APPLICATION_ADMIN_EMAILS`: 管理者通知先（カンマ区切り）
 
+
+

@@ -5,6 +5,28 @@ applications:
       phases:
         preBuild:
           commands:
+            - |
+                if [ "${ENABLE_TERRAFORM_APPLY}" = "true" ]; then
+                  echo "Running terraform apply for DynamoDB..."
+                  cd ../../infra/terraform/dynamodb
+                  if ! command -v terraform >/dev/null 2>&1; then
+                    echo "Terraform not found, installing..."
+                    curl -sSLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip
+                    unzip -o /tmp/terraform.zip -d /tmp
+                    export PATH="/tmp:${PATH}"
+                  fi
+                  terraform init \
+                    -backend-config="bucket=${TF_STATE_BUCKET}" \
+                    -backend-config="region=${TF_STATE_REGION}" \
+                    -backend-config="dynamodb_table=${TF_STATE_LOCK_TABLE}" \
+                    -backend-config="encrypt=true" \
+                    -backend-config="workspace_key_prefix=${TF_STATE_PREFIX}"
+                  terraform workspace select "${TF_ENV}" || terraform workspace new "${TF_ENV}"
+                  terraform apply -auto-approve -var "project=${TF_PROJECT}" -var "environment=${TF_ENV}"
+                  cd - >/dev/null
+                else
+                  echo "Skipping terraform apply (ENABLE_TERRAFORM_APPLY is not true)."
+                fi
             - corepack enable
             - pnpm install
         build:

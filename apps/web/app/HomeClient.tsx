@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PushSubscribeCard } from "@/components/push/PushSubscribeCard";
 
 type Status = "idle" | "saving" | "success" | "error";
 
@@ -162,6 +163,10 @@ export function HomeClient(props: {
         <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">Home</p>
         <h1 className="text-2xl font-semibold">ホーム</h1>
       </header>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <PushSubscribeCard />
+      </div>
 
       <Card
         title="お知らせ"
@@ -354,5 +359,4 @@ export function HomeClient(props: {
     </div>
   );
 }
-
 
